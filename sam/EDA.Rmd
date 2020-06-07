@@ -1,0 +1,149 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+library(tidyverse)
+
+medicare = read_csv('./data/medicare.csv')
+medicare
+
+
+```
+```{r}
+sources = medicare %>% 
+  distinct(AttendingPhysician) %>% 
+  rename(label = AttendingPhysician)
+
+destinations = medicare %>% 
+  distinct(OperatingPhysician) %>% 
+  rename(label = OperatingPhysician)
+```
+
+```{r}
+nodes = full_join(sources,destinations, by='label') %>% rowid_to_column("id") %>% drop_na()
+nodes
+```
+
+```{r}
+per_route = medicare %>% 
+  group_by(source,destination) %>% 
+  summarise(weight = n()) %>% 
+  ungroup()
+per_route
+```
+```{r}
+edges = per_route %>% 
+  left_join(nodes, by=c('source' = 'label')) %>% 
+  rename(from=id)
+
+edges = edges %>% 
+  left_join(nodes, by = c("destination" = 'label')) %>% 
+  rename(to = id)
+
+edges = select(edges,from, to, weight)
+```
+
+```{r}
+save(nodes, file = "nodes.RData")
+save(edges, file = "edges.RData")
+```
+
+
+```{r}
+library(network)
+
+routes_network <- network(edges, vertex.attr = nodes, 
+                          matrix.type = "edgelist", ignore.eval = FALSE)
+```
+```{r}
+plot(routes_network, vertex.cex = 3)
+plot(routes_network, vertex.cex = 3, mode = "circle")
+
+```
+```{r}
+detach(package:network)
+rm(routes_network)
+library(igraph)
+```
+
+```{r}
+routes_igraph <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
+```
+```{r}
+plot(routes_igraph, edge.arrow.size = 0.2)
+plot(routes_igraph, layout = layout_with_graphopt, edge.arrow.size = 0.2)
+```
+
+```{r}
+library(tidygraph)
+library(ggraph)
+```
+```{r}
+routes_tidy <- tbl_graph(nodes = nodes, edges = edges, directed = TRUE)
+```
+
+```{r}
+routes_tidy
+```
+
+```{r}
+routes_tidy %>% 
+  activate(edges) %>% 
+  arrange(desc(weight))
+```
+```{r}
+ggraph(routes_tidy, layout = 'graphopt') + 
+  geom_node_point() + 
+  geom_edge_link(aes(width=weight), alpha=0.8) +
+  scale_edge_width(range=c(0.1,2)) +
+  geom_node_text(aes(label=label), repel=TRUE) +
+  labs(edge_width = "Letters") +
+  theme_graph()
+
+ggraph(routes_igraph, layout = "linear") + 
+  geom_edge_arc(aes(width = weight), alpha = 0.8) + 
+  scale_edge_width(range = c(0.2, 2)) +
+  geom_node_text(aes(label = label)) +
+  labs(edge_width = "Letters") +
+  theme_graph()
+
+```
+```{r}
+library(visNetwork)
+library(networkD3)
+
+visNetwork(nodes,edges)
+```
+
+```{r}
+edges = mutate(edges, width = weight/5 + 1)
+
+visNetwork(nodes,edges) %>% 
+  visIgraphLayout(layout = "layout_with_fr") %>% 
+  visEdges(arrows="middle")
+```
+
+```{r}
+nodes_d3 <- mutate(nodes, id = id - 1)
+edges_d3 <- mutate(edges, from = from - 1, to = to - 1)
+```
+
+```{r}
+forceNetwork(Links = edges_d3, Nodes = nodes_d3, Source = "from", Target = "to", 
+             NodeID = "label", Group = "id", Value = "weight", 
+             opacity = 1, fontSize = 16, zoom = TRUE)
+```
+```{r}
+sankeyNetwork(Links = edges_d3, Nodes = nodes_d3, Source = "from", Target = "to", 
+              NodeID = "label", Value = "weight", fontSize = 16, unit = "Letter(s)")
+```
+```{r}
+
+```
+
