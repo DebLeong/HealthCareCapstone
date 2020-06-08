@@ -1,3 +1,2 @@
-# exclude data directory
-
-/sam/data/*
+#ignore data folder
+deb/data
