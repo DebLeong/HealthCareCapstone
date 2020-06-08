@@ -9,45 +9,97 @@ Try executing this chunk by clicking the *Run* button within the chunk or by pla
 
 ```{r}
 library(tidyverse)
+library(network)
 
-medicare = read_csv('./data/medicare.csv')
-medicare
+docs = read_csv('./data/docConnet.csv')
 
+
+generate_Network = function(docs){
+  source = docs %>% 
+    distinct(Doc1) %>% 
+    rename(label = Doc1) %>% mutate(type = "Attending")
+  
+  destination = docs %>% 
+    distinct(Doc2,Connection) %>% 
+    mutate(type = ifelse(Connection=='OperatingPhysician','Operating','Other')) %>% 
+    rename(label = Doc2) %>% 
+    select(label,type)
+  
+  nodes = full_join(source,destination, by=c('label','type')) %>% rowid_to_column("id") %>% drop_na()
+  
+  per_route = docs %>% 
+    group_by(Doc1,Doc2) %>% 
+    summarise(weight = sum(ClaimsFiled)) %>% 
+    ungroup() %>% rowid_to_column()
+  
+  edges = per_route %>% 
+    left_join(nodes, by=c('Doc1' = 'label')) %>% 
+    rename(from=id)
+  
+  edges = edges %>% 
+    left_join(nodes, by = c("Doc2" = 'label')) %>% 
+    rename(to = id)
+  
+  edges = select(edges,from, to, weight)
+
+  
+  docNet <- network(edges, vertex.attr = nodes, 
+                            matrix.type = "edgelist", ignore.eval = FALSE)
+
+}
+```
+```{r}
+data = filter(docs, State == 23)# %>% select(-X1)
+data = data[complete.cases(data),]
+generate_Network(data)
+```
+
+```{r}
+edges
+```
+
+```{r}
+library('network')
+
+doc_net <- network(edges,  vertex.attr=nodes, matrix.type="edgelist", 
+                loops=F, multiple=F, ignore.eval = F)
+
+#detach('package:network')
+library(ggraph)
+library(igraph)
+
+ggraph(doc_net) +
+  geom_edge_fan(color="gray50", width=0.8, alpha=0.5) + 
+  geom_node_point() +
+  theme_bw() # add nodes to the plot
 
 ```
 ```{r}
-sources = medicare %>% 
-  distinct(AttendingPhysician) %>% 
-  rename(label = AttendingPhysician)
-
-destinations = medicare %>% 
-  distinct(OperatingPhysician) %>% 
-  rename(label = OperatingPhysician)
+ggraph(doc_net) +
+  geom_edge_arc(color="gray", curvature=0.3, aes(size=weight)) +            
+  geom_node_point(color="orange") +     
+  geom_node_text(aes(label = label), size=2, color="black", repel=T) +
+  theme_void()
 ```
 
 ```{r}
-nodes = full_join(sources,destinations, by='label') %>% rowid_to_column("id") %>% drop_na()
-nodes
+par(mar=c(0,0,0,0))
+
+render.d3movie(doc_net, usearrows = F, displaylabels = F, bg="#111111", 
+       vertex.border="#ffffff", 
+       #vertex.col =  net3 %v% "col",
+       #vertex.cex = (net3 %v% "audience.size")/8, 
+       edge.lwd = (net3 %e% "weight")/3, 
+       edge.col = '#55555599',
+       vertex.tooltip = paste("<b>Name:</b>", (net3 %v% 'label')), 
+                              #"<br>",
+                              #"<b>Type:</b>", (net3 %v% 'type.label')),
+       edge.tooltip = paste("<b>Connection to Source:</b>", (net3 %e% 'Connection'), "<br>", 
+                            "<b>Number of Claims Filed:</b>", (net3 %e% "weight" ) ),
+       launchBrowser=F, filename="Doc-Network.html")
 ```
 
-```{r}
-per_route = medicare %>% 
-  group_by(source,destination) %>% 
-  summarise(weight = n()) %>% 
-  ungroup()
-per_route
-```
-```{r}
-edges = per_route %>% 
-  left_join(nodes, by=c('source' = 'label')) %>% 
-  rename(from=id)
 
-edges = edges %>% 
-  left_join(nodes, by = c("destination" = 'label')) %>% 
-  rename(to = id)
-
-edges = select(edges,from, to, weight)
-```
 
 ```{r}
 save(nodes, file = "nodes.RData")
@@ -144,6 +196,46 @@ sankeyNetwork(Links = edges_d3, Nodes = nodes_d3, Source = "from", Target = "to"
               NodeID = "label", Value = "weight", fontSize = 16, unit = "Letter(s)")
 ```
 ```{r}
+netmat1 <- rbind(c(0,1,1,0,0), c(0,0,1,1,0), c(0,1,0,0,0), c(0,0,0,0,0), c(0,0,1,0,0))
+rownames(netmat1) <- c("A","B","C","D","E") 
+colnames(netmat1) <- c("A","B","C","D","E")
+net1 <- network(netmat1,matrix.type="adjacency") 
+class(net1)
+```
 
+```{r}
+gplot(net1, vertex.col=2, displaylabels=TRUE)
+```
+
+```{r}
+data = read_csv('./data/combinedData.csv')
+#target = read_csv('./data/combinedTarget.csv')
+```
+
+```{r}
+library(Hmisc)
+library(psych)
+data_summary = data %>% select_if(is.numeric) %>% psych::describe()
+```
+
+```{r}
+data_summary %>% mutate(n = abs(n-693603))
+```
+```{r}
+library(statnet)
+as.matrix(net1, matrix.type='edgelist')
+```
+
+```{r}
+set.vertex.attribute(net1, "gender", c("F","F","M","F","M"))
+net1 %v% "alldeg" = degree(net1)
+list.vertex.attributes(net1)
+
+get.vertex.attribute(net1, "alldeg")
+
+set.edge.attribute(net1, "rndval", runif(network.size(net1),0,1))
+
+netval1 <- rbind(c(0,2,3,0,0), c(0,0,3,1,0), c(0,1,0,0,0), c(0,0,0,0,0), c(0,0,2,0,0))
+netval1 <- network(netval1,matrix.type="adjacency", ignore.eval=FALSE,names.eval="like")
 ```
 
