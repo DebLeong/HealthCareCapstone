@@ -1,8 +1,6 @@
 import pandas as pd 
 import numpy as np 
-from datetime import 
-
-consolidate()
+from datetime import datetime 
 
 def consolidate():
 
@@ -89,7 +87,7 @@ def consolidate():
 
 
 
-def bene_eng(bene){
+def bene_eng(bene):
 	#################################################################################
 	# Clean Beneficiary Data
 	bene = bene.replace({'ChronicCond_Alzheimer': 2, 'ChronicCond_Heartfailure': 2, 'ChronicCond_KidneyDisease': 2,
@@ -123,11 +121,9 @@ def bene_eng(bene){
 	#################################################################################
 	# Feature Engineering: Count number of chronic conditions of the beneficiary
 
-	chronicConds = bene[['Alzheimer', 'HeartFailure', 'KidneyDisease',
-       'Cancer', 'ObstrPulmonary', 'Depression', 'Diabetes', 'IschemicHeart',
-       'Osteoporasis', 'RheumatoidArthritis', 'Stroke']]
-    bene['NumChronics'] = chronicConds.sum(axis = 1)
-}
+	chronicConds = bene[['Alzheimer', 'HeartFailure', 'KidneyDisease', 'Cancer', 'ObstrPulmonary', 'Depression', 'Diabetes', 'IschemicHeart','Osteoporasis', 'RheumatoidArthritis', 'Stroke']]
+	bene['NumChronics'] = chronicConds.sum(axis = 1)
+
 
 def data_eng(data):
 
@@ -203,4 +199,4 @@ def make_fake_names(data, columns = ['AttendingPhysician','OperatingPhysician','
 	for col in columns:
 		data[col] = data[col].apply(lambda x: id_lookup.loc[x][0])
 
-
+consolidate()
