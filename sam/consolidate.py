@@ -1,8 +1,7 @@
 import pandas as pd 
 import numpy as np 
-from datetime import 
+from datetime import datetime
 
-consolidate()
 
 def consolidate():
 
@@ -45,7 +44,7 @@ def consolidate():
 
 	#################################################################################
 	# Clean Beneficiary Data
-	bene_eng(bene)
+	bene = bene_eng(bene)
 	
 
 	#################################################################################
@@ -67,13 +66,13 @@ def consolidate():
 		right_on=['BeneID','Set'], 
 		how='inner')
 
-	data_eng(data)
+	data = data_eng(data)
 
 
 	#################################################################################
 	# Create fake names for doctor IDs (Optional)
 
-	#make_fake_names(data, columns = ['AttendingPhysician','OperatingPhysician','OtherPhysician'])
+	#data = make_fake_names(data, columns = ['AttendingPhysician','OperatingPhysician','OtherPhysician'])
 
 	#################################################################################
 	# Merge features and target data (Optional)
@@ -89,7 +88,7 @@ def consolidate():
 
 
 
-def bene_eng(bene){
+def bene_eng(bene):
 	#################################################################################
 	# Clean Beneficiary Data
 	bene = bene.replace({'ChronicCond_Alzheimer': 2, 'ChronicCond_Heartfailure': 2, 'ChronicCond_KidneyDisease': 2,
@@ -123,11 +122,13 @@ def bene_eng(bene){
 	#################################################################################
 	# Feature Engineering: Count number of chronic conditions of the beneficiary
 
-	chronicConds = bene[['Alzheimer', 'HeartFailure', 'KidneyDisease',
-       'Cancer', 'ObstrPulmonary', 'Depression', 'Diabetes', 'IschemicHeart',
-       'Osteoporasis', 'RheumatoidArthritis', 'Stroke']]
-    bene['NumChronics'] = chronicConds.sum(axis = 1)
-}
+	chronicConds = bene[['Alzheimer', 'HeartFailure', 'KidneyDisease',\
+	'Cancer', 'ObstrPulmonary', 'Depression', 'Diabetes', 'IschemicHeart',\
+	'Osteoporasis', 'RheumatoidArthritis', 'Stroke']]
+
+	bene['NumChronics'] = chronicConds.sum(axis = 1)
+
+	return bene
 
 def data_eng(data):
 
@@ -167,6 +168,8 @@ def data_eng(data):
 
 	data['Age'] = round(((data['ClaimStartDt'] - data['DOB']).dt.days + 1)/365.25)
 
+	return data
+
 
 def make_fake_names(data, columns = ['AttendingPhysician','OperatingPhysician','OtherPhysician']):
 	from faker import Faker
@@ -203,4 +206,9 @@ def make_fake_names(data, columns = ['AttendingPhysician','OperatingPhysician','
 	for col in columns:
 		data[col] = data[col].apply(lambda x: id_lookup.loc[x][0])
 
+	id_lookup.to_csv('./data/doc_lookup.csv')
 
+	return data
+
+
+consolidate()

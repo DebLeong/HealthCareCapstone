@@ -11,9 +11,369 @@ Try executing this chunk by clicking the *Run* button within the chunk or by pla
 library(tidyverse)
 library(network)
 
-docs = read_csv('./data/docConnet.csv')
+docs = read_csv('./data/combinedData.csv')
+target = read_csv('./data/combinedTarget.csv')
+data = docs %>% left_join(target, by=c('Provider','Set')) %>% select(-c('X1.x','X1.y'))
+```
+
+```{r}
+data = docs %>% left_join(target, by=c('Provider','Set')) %>% select(-c('X1.x','X1.y'))
+```
+```{r}
+library(tidyverse)
+```
+```{r}
+get_Bnet = function(data, state, county){
+  
+  data.filt = 
+    data %>% 
+    select(State, County, Provider, PotentialFraud, ClaimID, BeneID) %>% 
+    group_by(State, County, Provider, PotentialFraud, BeneID) %>% 
+    tally() %>% 
+    filter(State %in% state, County %in% county) %>% 
+    data.frame()
+  
+  df = get_Bnet %>% select(Provider,BeneID)
+  Bnet <- graph.data.frame(df,directed=FALSE)
+  
+  return(Bnet)
+}
+```
+
+```{r}
+bnet = get_Bnet(data, c(4), c(100))
+```
 
 
+```{r}
+
+data_pdc = data %>% 
+  select(State, County, Provider, PotentialFraud, ClaimID, AttendingPhysician, OperatingPhysician, OtherPhysician) %>% 
+  pivot_longer(cols=c(AttendingPhysician,OperatingPhysician,OtherPhysician), names_to = "Type", values_to = "Doctor") %>% 
+  filter(complete.cases(.))
+
+matrix = data_pdc %>% 
+  group_by(State, County, Provider, PotentialFraud, Doctor) %>% 
+  tally() %>% 
+  arrange(desc(n)) %>% 
+  ungroup()
+```
+
+```{r}
+matrix %>% head()
+matrix
+```
+
+
+```{r}
+data_pdc_5  = matrix %>% filter(State==5, County == 200) %>% data.frame()
+```
+
+```{r}
+data_beneP = 
+  data %>% 
+  select(State, County, Provider, PotentialFraud, ClaimID, BeneID) %>% 
+  group_by(State, County, Provider, PotentialFraud, BeneID) %>% 
+  tally() %>% 
+  arrange(desc(n)) %>% 
+  ungroup()
+```
+
+```{r}
+beneP  = data_beneP %>% filter(State==50, County == 200) %>% data.frame()
+beneP
+```
+```{r}
+nodes = beneP %>% 
+  distinct(Provider, PotentialFraud) %>% 
+  rename(label = Provider) %>% 
+  rowid_to_column("id") %>% 
+  drop_na()
+nodes
+```
+```{r}
+per_route = beneP %>%
+  group_by(BeneID) %>%
+  summarise(weight = sum(n)) %>%
+  arrange(desc(weight)) %>%
+  ungroup() %>%
+  rowid_to_column()
+per_route
+```
+
+
+```{r}
+fn4 <-
+  function(DT, by_col) {
+    temp <- merge(DT, DT, by = by_col, allow.cartesian = TRUE)
+    temp[temp$B.x != temp$B.y , -1]
+  }
+```
+
+## Finally Acheived a bipartite edge list
+```{r}
+edge.list = by(beneP, beneP$Provider, function(x) combn2(unlist(x$BeneID))) %>% map(data.frame)
+edge.mat = map_dfr(edge.list, .f = cbind, .id = 'index') %>% tibble()
+```
+
+```{r}
+C1 <- c(1,1,1,0,0,0)
+C2 <- c(0,1,1,1,0,0)
+C3 <- c(0,0,1,1,1,0)
+C4 <- c(0,0,0,0,1,1)
+aff.df <- data.frame(C1,C2,C3,C4)
+row.names(aff.df) <- c("S1","S2","S3","S4","S5","S6")
+
+library(igraph)
+bn <- graph.incidence(aff.df)
+```
+
+```{r}
+plt.x <- c(rep(2,6),rep(4,4))
+plt.y <- c(7:2,6:3)
+lay <- as.matrix(cbind(plt.x,plt.y))
+
+
+shapes <- c("circle","square")
+colors <- c("blue","red") 
+plot(bn,vertex.color=colors[V(bn)$type+1],
+vertex.shape=shapes[V(bn)$type+1], vertex.size=10,vertex.label.degree=-pi/2, vertex.label.dist=1.2,vertex.label.cex=0.9, layout=lay)
+```
+
+```{r}
+df = beneP %>% select(Provider,BeneID)
+binet <- graph.data.frame(df,directed=FALSE)
+binet
+```
+
+
+```{r}
+fraud = beneP %>% select(Provider,PotentialFraud)
+```
+
+```{r}
+V(binet)$type <- V(binet)$name %in% df[,1]
+V(binet)$actor <- ifelse(V(binet)$name %in% df[,1],'Provider','Patient')
+
+V(binet)$fraud <- ifelse(V(binet)$name %in% fraud[,1],fraud[,2],'')
+V(binet)$color <- ifelse(V(binet)$fraud == 'Yes' ,'red',
+                         ifelse(V(binet)$fraud == 'No','blue','black'))
+
+binet
+```
+
+```{r}
+shapes <- c("circle","square")
+colors <- c("blue","red") 
+plot(binet,
+     vertex.color=colors[V(bn)$type+1],
+     vertex.shape=shapes[V(bn)$type+1], 
+     vertex.size=10,vertex.label.degree=-pi/2, 
+     vertex.label.dist=1.2,
+     vertex.label.cex=0.9)
+```
+
+```{r}
+library(ggraph)
+library(igraph)
+
+ggraph(binet) +
+  geom_edge_arc(color="gray50", width=0.8, alpha=0.5, curvature=0.3) + 
+  geom_node_point(color = V(binet)$color) +
+  theme_bw() # add nodes to the plot
+```
+```{r}
+bn.pr <- bipartite.projection(binet)
+bn.patient <- bn.pr$proj1 
+bn.provider <- bn.pr$proj2 
+graph.density(bn.patient)
+get.adjacency(bn.patient,sparse=FALSE,attr="weight")
+```
+```{r}
+shapes <- c("circle","square") 
+colors <- c("blue","red")
+op <- par(mfrow=c(1,2)) 
+# plot(bn.patient,vertex.color="blue",
+#      vertex.shape="circle",main="Patients", 
+#      edge.width=E(bn.patient)$weight*2, 
+#      vertex.size=15,vertex.label.degree=-pi/2, 
+#      vertex.label.dist=1.2,vertex.label.cex=1)
+# plot(bn.provider,vertex.color="red", 
+#      vertex.shape="square",main="Providers", 
+#      edge.width=E(bn.patient)$weight*2, 
+#      vertex.size=15,vertex.label.degree=-pi/2, 
+#      vertex.label.dist=1.2,vertex.label.cex=1)
+
+
+ggraph(bn.patient) +
+  geom_edge_arc(color="gray50", width=0.8, alpha=0.5, curvature=0.3) + 
+  geom_node_point() +
+  theme_bw() # add nodes to the plot
+
+
+ggraph(bn.provider) +
+  geom_edge_arc(color="gray50", width=0.8, alpha=0.5, curvature=0.3) + 
+  geom_node_point(aes(color = fraud)) +
+  theme_bw() # add nodes to the plot
+par(op)
+```
+```{r}
+h2 <- subgraph.edges(h1, 
+                     E(h1)[inc(V(h1)[name %in% c("The Wolf of Wall Street", 
+                                                     "Gangs of New York",
+                                                     "The Departed")])]) 
+plot(h2, layout = layout_with_kk)
+```
+```{r}
+
+
+print('Degree Distribution of Patients')
+print(table(degree(binet,v=V(binet)[type==FALSE])))
+
+print('Degree Distribution of Providers')
+print(table(degree(binet,v=V(binet)[type==TRUE])))
+
+print('Mean Degree of Patients')
+print(mean(degree(binet,v=V(binet)[type==FALSE])))
+
+print('Mean Degree of Providers')
+print(mean(degree(binet,v=V(binet)[type==TRUE])))
+```
+```{r}
+V(binet)$deg = degree(binet)
+V(binet)[type==FALSE & deg > 4]$name
+```
+
+```{r}
+busy_patients <- data.frame(cbind(Patient = V(binet)[type==FALSE & deg > 4]$name, 
+                               Provider = V(binet)[type==FALSE & deg > 4]$deg
+))
+busy_patients
+```
+```{r}
+beneP %>% 
+  select(Provider,BeneID) %>% 
+  group_by(BeneID) %>% 
+  tally() %>% 
+  filter(n > 4) %>% 
+  arrange(desc(n))
+
+bene = beneP %>% 
+  select(Provider,BeneID) %>% 
+  group_by(BeneID) %>% 
+  tally()
+mean(bene$n)
+```
+
+
+## Great example of how a new metric can be created... though maybe this can also be done easliy with dataframe groupings.. 
+```{r}
+for (i in 161:1365) {
+  V(h1)[i]$totrating <- sum(V(h1)[nei(i)]$IMDBrating)
+}
+
+pop_actor <- data.frame(cbind(Actor = V(h1)[type==FALSE & totrating > 40]$name, 
+                              Popularity = V(h1)[type==FALSE & totrating > 40]$totrating)) 
+
+pop_actor[order(pop_actor$Popularity,decreasing=TRUE),]
+
+scatter.smooth(num,avgpop,col="lightblue", 
+               ylim=c(2,10),span=.8, xlab="Number of Movies", ylab="Avg. Popularity")
+```
+
+
+```{r}
+h1.pr <- bipartite.projection(h1) 
+h1.act <- h1.pr$proj1
+h1.mov <- h1.pr$proj2
+h1.act
+```
+
+```{r}
+op <- par(mar = rep(0, 4)) 
+plot(bn.provider,vertex.color="red", 
+     vertex.shape="circle", 
+     vertex.size=(E(bn.provider)$weight+1)/2, 
+     vertex.label=NA)
+
+par(op)
+no.clusters(bn.provider)
+
+```
+
+```{r}
+bn.provider <- induced.subgraph(bn.provider, vids=clusters(bn.provider)$membership==1)
+plot(bn.provider,vertex.color="red", 
+     edge.width=sqrt(E(bn.provider)$weight), 
+     vertex.shape="circle", 
+     vertex.size=E(bn.provider)$weight, 
+     vertex.label=NA)
+
+```
+
+
+```{r}
+h1.pr <- bipartite.projection(binet) 
+h1.act <- h1.pr$proj1
+h1.mov <- h1.pr$proj2
+h1.act
+```
+
+
+
+
+
+
+```{r}
+per_route = data_pdc_5 %>%
+  group_by(Doctor) %>%
+  summarise(weight = sum(n)) %>%
+  arrange(desc(weight)) %>%
+  ungroup() %>%
+  rowid_to_column()
+per_route
+```
+
+```{r}
+
+#by(data_pdc_5, data_pdc_5$Provider, function(x) t(combn(as.vector(x$Doctor), 2)))
+adjacency_mat = data_pdc_5 %>%
+  select(Provider, Doctor, n) %>% 
+  spread(Doctor, n, fill=0) %>% 
+  tibble::column_to_rownames("Provider")
+
+
+# edges = per_route %>%
+#   left_join(nodes, by=c('Doc1' = 'label')) %>%
+#   rename(from=id)
+# 
+# edges = edges %>% 
+#   left_join(nodes, by = c("Doc2" = 'label')) %>% 
+#   rename(to = id)
+# 
+# edges = select(edges,from, to, weight)
+# 
+# 
+# docNet <- network(edges, vertex.attr = nodes, 
+#                           matrix.type = "edgelist", ignore.eval = FALSE)
+```
+
+```{r}
+adjacency_mat %>% head() %>% sum()
+```
+```{r}
+net1 <- network(adjacency_mat,matrix.type="adjacency") 
+```
+
+```{r}
+library(igraph)
+adjm1<-matrix(sample(0:1,1000,replace=TRUE,prob=c(0.9,01)),nc=10) 
+g1<-graph.adjacency(adjm1)
+x11()
+plot(g1)
+```
+
+```{r}
 generate_Network = function(docs){
   source = docs %>% 
     distinct(Doc1) %>% 
@@ -48,6 +408,7 @@ generate_Network = function(docs){
 
 }
 ```
+
 ```{r}
 data = filter(docs, State == 23)# %>% select(-X1)
 data = data[complete.cases(data),]
