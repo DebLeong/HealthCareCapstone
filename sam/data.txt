@@ -1,8 +1,0 @@
-Test.csv
-Test_Beneficiary.csv
-Test_Inpatient.csv
-Test_Outpatient.csv
-Train.csv
-Train_Beneficiary.csv
-Train_Inpatient.csv
-Train_Outpatient.csv
