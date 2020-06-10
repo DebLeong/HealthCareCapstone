@@ -10,140 +10,125 @@ Try executing this chunk by clicking the *Run* button within the chunk or by pla
 ```{r}
 library(tidyverse)
 library(network)
+library(ggraph)
+library(igraph)
+library(graphlayouts)
 
 docs = read_csv('./data/combinedData.csv')
 target = read_csv('./data/combinedTarget.csv')
 data = docs %>% left_join(target, by=c('Provider','Set')) %>% select(-c('X1.x','X1.y'))
 ```
 
-```{r}
-data = docs %>% left_join(target, by=c('Provider','Set')) %>% select(-c('X1.x','X1.y'))
-```
-```{r}
-library(tidyverse)
-```
+
 ```{r}
 get_Bnet = function(data, state, county){
   
   data.filt = 
     data %>% 
-    select(State, County, Provider, PotentialFraud, ClaimID, BeneID) %>% 
+    dplyr::select(State, County, Provider, PotentialFraud, ClaimID, BeneID) %>% 
     group_by(State, County, Provider, PotentialFraud, BeneID) %>% 
     tally() %>% 
     filter(State %in% state, County %in% county) %>% 
+    rename('weights' = 'n') %>% 
     data.frame()
   
-  df = get_Bnet %>% select(Provider,BeneID)
-  Bnet <- graph.data.frame(df,directed=FALSE)
+  ## Get Provider | Beneficiary
+  connections = data.filt %>% dplyr::select(Provider,BeneID,weights)
+  
+  ## Create bipartite graph
+  Bnet <- graph.data.frame(connections,directed=FALSE)
+  
+  ## Add attributes
+  shapes <- c(21,15)
+
+  
+  fraud = data.filt %>% select(Provider,PotentialFraud)
+  
+  V(Bnet)$type <- V(Bnet)$name %in% connections[,1]
+  
+  V(Bnet)$actor <- ifelse(V(Bnet)$name %in% connections[,1],'Provider','Patient')
+  
+  V(Bnet)$fraud <- ifelse(V(Bnet)$name %in% fraud[,1],fraud[,2],'Patient')
+  
+  V(Bnet)$size <- degree(Bnet)
+  
+  # Add node attribute for dead or not
+
+  #E(Bnet)$weight <- 
+  
+  V(Bnet)$shape <- shapes[V(Bnet)$type+1]
+  
+  # Create 4 new features for connectivity of providers based on bipartite projection graphs based on 
+  # doctor and patient networks
   
   return(Bnet)
 }
+
+
 ```
 
 ```{r}
-bnet = get_Bnet(data, c(4), c(100))
-```
-
-
-```{r}
-
-data_pdc = data %>% 
-  select(State, County, Provider, PotentialFraud, ClaimID, AttendingPhysician, OperatingPhysician, OtherPhysician) %>% 
-  pivot_longer(cols=c(AttendingPhysician,OperatingPhysician,OtherPhysician), names_to = "Type", values_to = "Doctor") %>% 
-  filter(complete.cases(.))
-
-matrix = data_pdc %>% 
-  group_by(State, County, Provider, PotentialFraud, Doctor) %>% 
-  tally() %>% 
-  arrange(desc(n)) %>% 
-  ungroup()
+# Make three get_Bnet functions for each combination
+bnet = get_Bnet(data, c(1), c(100,200,300))
 ```
 
 ```{r}
-matrix %>% head()
-matrix
-```
 
+palette <- c('?'="#1A5878",'Patient'= "#C44237", 'No' = "#AD8941", 'Yes' = "green")
 
-```{r}
-data_pdc_5  = matrix %>% filter(State==5, County == 200) %>% data.frame()
-```
+id_palette <- c("#1A5878","#C44237","#AD8941","green")
+ggraph(bnet, layout = "kk")+
+  geom_edge_link0(alpha=0.5, edge_colour = "grey66", aes(width = weights)) + 
+  #geom_node_point(aes(color = fraud, size = size), shape = V(bnet)$shape) +
+  geom_node_point(aes(fitler = size >= 10, color = fraud, size = size), shape = V(bnet)$shape) +
+  geom_node_text(aes(filter = size >= 50, label = name, size=3),family="serif", repel=TRUE)+
+  scale_color_brewer(palette = "Dark2")+
+  scale_edge_width_continuous(range = c(0.2,3), guide=FALSE)+
+  #scale_fill_manual(values = palette) +
+  scale_size_continuous(range = c(1,5), guide=FALSE)+
+  theme_graph() +
+  theme(legend.position = "bottom")
 
-```{r}
-data_beneP = 
-  data %>% 
-  select(State, County, Provider, PotentialFraud, ClaimID, BeneID) %>% 
-  group_by(State, County, Provider, PotentialFraud, BeneID) %>% 
-  tally() %>% 
-  arrange(desc(n)) %>% 
-  ungroup()
+#ggsave(filename=paste0('./visualizations/networks/pb_5_200_sugiyama.png'),plot=last_plot())
 ```
+```{r}
 
-```{r}
-beneP  = data_beneP %>% filter(State==50, County == 200) %>% data.frame()
-beneP
-```
-```{r}
-nodes = beneP %>% 
-  distinct(Provider, PotentialFraud) %>% 
-  rename(label = Provider) %>% 
-  rowid_to_column("id") %>% 
-  drop_na()
-nodes
-```
-```{r}
-per_route = beneP %>%
-  group_by(BeneID) %>%
-  summarise(weight = sum(n)) %>%
-  arrange(desc(weight)) %>%
-  ungroup() %>%
-  rowid_to_column()
-per_route
+bb <- layout_as_backbone(bnet,keep = 0.3)
+E(bnet)$col <- FALSE
+E(bnet)$col[bb$backbone] <- TRUE
+  
+ggraph(bnet, layout = "manual",x = bb$xy[,1],y = bb$xy[,2])+
+  geom_edge_link0(alpha=0.5, edge_colour = "grey66", aes(width = weights)) + 
+  geom_node_point(aes(color = fraud, size = size), shape = V(bnet)$shape) +
+  geom_node_text(aes(filter = size >= 100, label = name, size=3),family="serif", repel=TRUE)+
+  scale_color_brewer(palette = "Dark2")+
+  scale_edge_width_continuous(range = c(0.2,3), guide=FALSE)+
+  #scale_fill_manual(values = palette) +
+  scale_size_continuous(range = c(1,5), guide=FALSE)+
+  theme_graph() +
+  theme(legend.position = "bottom")
 ```
 
 
 ```{r}
-fn4 <-
-  function(DT, by_col) {
-    temp <- merge(DT, DT, by = by_col, allow.cartesian = TRUE)
-    temp[temp$B.x != temp$B.y , -1]
-  }
+
+# data_pdc = data %>% 
+#   select(State, County, Provider, PotentialFraud, ClaimID, AttendingPhysician, OperatingPhysician, OtherPhysician) %>% 
+#   pivot_longer(cols=c(AttendingPhysician,OperatingPhysician,OtherPhysician), names_to = "Type", values_to = "Doctor") %>% 
+#   filter(complete.cases(.))
+# 
+# matrix = data_pdc %>% 
+#   group_by(State, County, Provider, PotentialFraud, Doctor) %>% 
+#   tally() %>% 
+#   arrange(desc(n)) %>% 
+#   ungroup()
 ```
+
 
 ## Finally Acheived a bipartite edge list
 ```{r}
-edge.list = by(beneP, beneP$Provider, function(x) combn2(unlist(x$BeneID))) %>% map(data.frame)
-edge.mat = map_dfr(edge.list, .f = cbind, .id = 'index') %>% tibble()
-```
-
-```{r}
-C1 <- c(1,1,1,0,0,0)
-C2 <- c(0,1,1,1,0,0)
-C3 <- c(0,0,1,1,1,0)
-C4 <- c(0,0,0,0,1,1)
-aff.df <- data.frame(C1,C2,C3,C4)
-row.names(aff.df) <- c("S1","S2","S3","S4","S5","S6")
-
-library(igraph)
-bn <- graph.incidence(aff.df)
-```
-
-```{r}
-plt.x <- c(rep(2,6),rep(4,4))
-plt.y <- c(7:2,6:3)
-lay <- as.matrix(cbind(plt.x,plt.y))
-
-
-shapes <- c("circle","square")
-colors <- c("blue","red") 
-plot(bn,vertex.color=colors[V(bn)$type+1],
-vertex.shape=shapes[V(bn)$type+1], vertex.size=10,vertex.label.degree=-pi/2, vertex.label.dist=1.2,vertex.label.cex=0.9, layout=lay)
-```
-
-```{r}
-df = beneP %>% select(Provider,BeneID)
-binet <- graph.data.frame(df,directed=FALSE)
-binet
+# edge.list = by(beneP, beneP$Provider, function(x) combn2(unlist(x$BeneID))) %>% map(data.frame)
+# edge.mat = map_dfr(edge.list, .f = cbind, .id = 'index') %>% tibble()
 ```
 
 
@@ -174,20 +159,14 @@ plot(binet,
 ```
 
 ```{r}
-library(ggraph)
-library(igraph)
 
-ggraph(binet) +
-  geom_edge_arc(color="gray50", width=0.8, alpha=0.5, curvature=0.3) + 
-  geom_node_point(color = V(binet)$color) +
-  theme_bw() # add nodes to the plot
 ```
 ```{r}
-bn.pr <- bipartite.projection(binet)
+bn.pr <- bipartite.projection(bnet)
 bn.patient <- bn.pr$proj1 
 bn.provider <- bn.pr$proj2 
 graph.density(bn.patient)
-get.adjacency(bn.patient,sparse=FALSE,attr="weight")
+#get.adjacency(bn.patient,sparse=FALSE,attr="weight")
 ```
 ```{r}
 shapes <- c("circle","square") 
@@ -205,18 +184,37 @@ op <- par(mfrow=c(1,2))
 #      vertex.label.dist=1.2,vertex.label.cex=1)
 
 
-ggraph(bn.patient) +
-  geom_edge_arc(color="gray50", width=0.8, alpha=0.5, curvature=0.3) + 
+ggraph(bn.patient, layout='stress') +
+  geom_edge_link0(color="gray50", width=0.8, alpha=0.5) +  
   geom_node_point() +
-  theme_bw() # add nodes to the plot
+  geom_node_text(aes(filter = size >= 10, label = name, size=3),family="serif", repel=TRUE)+
+  theme_graph() +
+  theme(legend.position = "bottom")
 
 
-ggraph(bn.provider) +
-  geom_edge_arc(color="gray50", width=0.8, alpha=0.5, curvature=0.3) + 
-  geom_node_point(aes(color = fraud)) +
-  theme_bw() # add nodes to the plot
+ggraph(bn.provider, layout='stress') +
+  geom_edge_link0(color="gray50", width=0.8, alpha=0.5) +
+  geom_node_text(aes(filter = size >= 10, label = name, size=3),family="serif", repel=TRUE)+
+  geom_node_point(aes(color = fraud, size = size)) +
+  scale_size_continuous(range = c(1,5), guide=FALSE)+
+  theme_graph() +
+  theme(legend.position = "bottom")
 par(op)
 ```
+
+```{r}
+
+
+
+df.prom <- data.frame(
+  btw = betweenness(bn.provider), 
+  evc = evcent(bn.provider),
+  inf = infocent(bn.provider), 
+  flb = flowbet(bn.provider)
+)
+```
+
+
 ```{r}
 h2 <- subgraph.edges(h1, 
                      E(h1)[inc(V(h1)[name %in% c("The Wolf of Wall Street", 
