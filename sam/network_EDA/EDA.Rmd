@@ -5,7 +5,6 @@ output: html_notebook
 
 ```{r}
 library(tidyverse)
-source("analNet.R")
 
 docs = read_csv('../data/combinedData.csv');
 target = read_csv('../data/combinedTarget.csv');
@@ -27,8 +26,55 @@ User can also look at all counties within a given state by setting county = 'all
 Though for large states or patdoc networks this is not recommended since it takes a long time to plot and graphs are not that informative. 
 
 ```{r}
-netAnal(data, state = 6, county = c(100,200), type='propat', layout = 'stress')
+source("analNet.R")
+
+netAnal(data, state = 'Alaska', county = c(200), type='propat', layout = 'stress')
 ```
+
+```{r}
+source("getNet.R")
+source("plotNet.R")
+require(tidyverse)
+require(network)
+require(ggraph)
+require(igraph)
+require(graphlayouts)
+
+
+bnet = propat(data, c('Alaska'), c(100))
+
+detach(package:network)
+detach(package:igraph)
+plotProPat(bnet)
+```
+```{r}
+
+
+
+
+```
+
+
+```{r}
+ggraph(bnet, layout ='stress')+
+    geom_edge_link0(alpha=0.5, edge_colour = "grey66", aes(width = weights)) + 
+    #geom_node_point(aes(color = fraud, size = size), shape = V(bnet)$shape) +
+    geom_node_point(aes(
+      #fitler = size >= 10,
+      color = fraud,
+      size = size), shape = V(bnet)$shape) +
+    geom_node_text(aes(filter = size >= 50, label = name, size=3),family="serif", repel=TRUE)+
+    scale_color_brewer(palette = "Dark2")+
+    scale_edge_width_continuous(range = c(0.2,3), guide=FALSE)+
+    scale_fill_manual(values = palette) +
+    scale_size_continuous(range = c(1,5), guide=FALSE)+
+    theme_graph() +
+    theme(legend.position = "bottom")
+  
+    #ggsave(filename=paste0('./visualizations/networks/pb_5_200_sugiyama.png'),plot=last_plot())
+}
+```
+
 
 ```{r}
 bn.pr <- bipartite.projection(bnet)
