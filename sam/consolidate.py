@@ -3,6 +3,62 @@ import numpy as np
 from datetime import datetime
 
 
+
+state_dict = {
+ 1: 'Alabama',
+ 2: 'Alaska',
+ 3: 'Arizona',
+ 4: 'Arkansas',
+ 5: 'California',
+ 6: 'Colorado',
+ 7: 'Connecticut',
+ 8: 'Delaware',
+ 9: 'District of Columbia',
+ 10: 'Florida',
+ 11: 'Georgia',
+ 12: 'Hawaii',
+ 13: 'Idaho',
+ 14: 'Illinois',
+ 15: 'Indiana',
+ 16: 'Iowa',
+ 17: 'Kansas',
+ 18: 'Kentucky',
+ 19: 'Louisiana',
+ 20: 'Maine',
+ 21: 'Maryland',
+ 22: 'Massachusetts',
+ 23: 'Michigan',
+ 24: 'Minnesota',
+ 25: 'Mississippi',
+ 26: 'Missouri',
+ 27: 'Montana',
+ 28: 'Nebraska',
+ 29: 'Nevada',
+ 30: 'New Hampshire',
+ 31: 'New Jersey',
+ 32: 'New Mexico',
+ 33: 'New York',
+ 34: 'North Carolina',
+ 35: 'North Dakota',
+ 36: 'Ohio',
+ 37: 'Oklahoma',
+ 38: 'Oregon',
+ 39: 'Pennsylvania',
+ 41: 'Rhode Island',
+ 42: 'South Carolina',
+ 43: 'South Dakota',
+ 44: 'Tennessee',
+ 45: 'Texas',
+ 46: 'Utah',
+ 47: 'Vermont',
+ 49: 'Virginia',
+ 50: 'Washington',
+ 51: 'West Virginia',
+ 52: 'Wisconsin',
+ 53: 'Wyoming',
+ 54: 'Puerto Rico'}
+
+
 def consolidate():
 
 	#################################################################################
@@ -127,6 +183,7 @@ def bene_eng(bene):
 	'Osteoporasis', 'RheumatoidArthritis', 'Stroke']]
 
 	bene['NumChronics'] = chronicConds.sum(axis = 1)
+	bene['State'] = bene['State'].apply(lambda x: state_dict[x])
 
 	return bene
 

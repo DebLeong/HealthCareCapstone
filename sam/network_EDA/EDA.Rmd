@@ -1,193 +1,87 @@
 ---
-title: "R Notebook"
+title: "Health Care Fraud EDA"
 output: html_notebook
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
-
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
-
 ```{r}
 library(tidyverse)
-library(network)
 
-docs = read_csv('./data/combinedData.csv')
-target = read_csv('./data/combinedTarget.csv')
-data = docs %>% left_join(target, by=c('Provider','Set')) %>% select(-c('X1.x','X1.y'))
+docs = read_csv('../data/combinedData.csv');
+target = read_csv('../data/combinedTarget.csv');
+
+data = docs %>% 
+  left_join(target, by=c('Provider','Set')) %>% 
+  select(-c('X1.x','X1.y'));
+```
+netAnal takes in the data, state number, and counties and produces a bipartites network
+graph of either the
+
+- Provider-Patient Network (type = 'propat')
+- Provider-Doctor Network (type = 'prodoc')
+- Patient-Doctor Network (type = 'patdoc')
+
+User can also specify the way to layout the diagram. Usually 'stress' is the best layout to visualize these networks. For a more hierarchical layout try 'sugiyama'.
+
+User can also look at all counties within a given state by setting county = 'all'.
+Though for large states or patdoc networks this is not recommended since it takes a long time to plot and graphs are not that informative. 
+
+```{r}
+source("analNet.R")
+
+netAnal(data, state = 'Alaska', county = c(200), type='propat', layout = 'stress')
 ```
 
 ```{r}
-data = docs %>% left_join(target, by=c('Provider','Set')) %>% select(-c('X1.x','X1.y'))
+source("getNet.R")
+source("plotNet.R")
+require(tidyverse)
+require(network)
+require(ggraph)
+require(igraph)
+require(graphlayouts)
+
+
+bnet = propat(data, c('Alaska'), c(100))
+
+detach(package:network)
+detach(package:igraph)
+plotProPat(bnet)
 ```
 ```{r}
-library(tidyverse)
+
+
+
+
 ```
+
+
 ```{r}
-get_Bnet = function(data, state, county){
+ggraph(bnet, layout ='stress')+
+    geom_edge_link0(alpha=0.5, edge_colour = "grey66", aes(width = weights)) + 
+    #geom_node_point(aes(color = fraud, size = size), shape = V(bnet)$shape) +
+    geom_node_point(aes(
+      #fitler = size >= 10,
+      color = fraud,
+      size = size), shape = V(bnet)$shape) +
+    geom_node_text(aes(filter = size >= 50, label = name, size=3),family="serif", repel=TRUE)+
+    scale_color_brewer(palette = "Dark2")+
+    scale_edge_width_continuous(range = c(0.2,3), guide=FALSE)+
+    scale_fill_manual(values = palette) +
+    scale_size_continuous(range = c(1,5), guide=FALSE)+
+    theme_graph() +
+    theme(legend.position = "bottom")
   
-  data.filt = 
-    data %>% 
-    select(State, County, Provider, PotentialFraud, ClaimID, BeneID) %>% 
-    group_by(State, County, Provider, PotentialFraud, BeneID) %>% 
-    tally() %>% 
-    filter(State %in% state, County %in% county) %>% 
-    data.frame()
-  
-  df = get_Bnet %>% select(Provider,BeneID)
-  Bnet <- graph.data.frame(df,directed=FALSE)
-  
-  return(Bnet)
+    #ggsave(filename=paste0('./visualizations/networks/pb_5_200_sugiyama.png'),plot=last_plot())
 }
 ```
 
-```{r}
-bnet = get_Bnet(data, c(4), c(100))
-```
-
 
 ```{r}
-
-data_pdc = data %>% 
-  select(State, County, Provider, PotentialFraud, ClaimID, AttendingPhysician, OperatingPhysician, OtherPhysician) %>% 
-  pivot_longer(cols=c(AttendingPhysician,OperatingPhysician,OtherPhysician), names_to = "Type", values_to = "Doctor") %>% 
-  filter(complete.cases(.))
-
-matrix = data_pdc %>% 
-  group_by(State, County, Provider, PotentialFraud, Doctor) %>% 
-  tally() %>% 
-  arrange(desc(n)) %>% 
-  ungroup()
-```
-
-```{r}
-matrix %>% head()
-matrix
-```
-
-
-```{r}
-data_pdc_5  = matrix %>% filter(State==5, County == 200) %>% data.frame()
-```
-
-```{r}
-data_beneP = 
-  data %>% 
-  select(State, County, Provider, PotentialFraud, ClaimID, BeneID) %>% 
-  group_by(State, County, Provider, PotentialFraud, BeneID) %>% 
-  tally() %>% 
-  arrange(desc(n)) %>% 
-  ungroup()
-```
-
-```{r}
-beneP  = data_beneP %>% filter(State==50, County == 200) %>% data.frame()
-beneP
-```
-```{r}
-nodes = beneP %>% 
-  distinct(Provider, PotentialFraud) %>% 
-  rename(label = Provider) %>% 
-  rowid_to_column("id") %>% 
-  drop_na()
-nodes
-```
-```{r}
-per_route = beneP %>%
-  group_by(BeneID) %>%
-  summarise(weight = sum(n)) %>%
-  arrange(desc(weight)) %>%
-  ungroup() %>%
-  rowid_to_column()
-per_route
-```
-
-
-```{r}
-fn4 <-
-  function(DT, by_col) {
-    temp <- merge(DT, DT, by = by_col, allow.cartesian = TRUE)
-    temp[temp$B.x != temp$B.y , -1]
-  }
-```
-
-## Finally Acheived a bipartite edge list
-```{r}
-edge.list = by(beneP, beneP$Provider, function(x) combn2(unlist(x$BeneID))) %>% map(data.frame)
-edge.mat = map_dfr(edge.list, .f = cbind, .id = 'index') %>% tibble()
-```
-
-```{r}
-C1 <- c(1,1,1,0,0,0)
-C2 <- c(0,1,1,1,0,0)
-C3 <- c(0,0,1,1,1,0)
-C4 <- c(0,0,0,0,1,1)
-aff.df <- data.frame(C1,C2,C3,C4)
-row.names(aff.df) <- c("S1","S2","S3","S4","S5","S6")
-
-library(igraph)
-bn <- graph.incidence(aff.df)
-```
-
-```{r}
-plt.x <- c(rep(2,6),rep(4,4))
-plt.y <- c(7:2,6:3)
-lay <- as.matrix(cbind(plt.x,plt.y))
-
-
-shapes <- c("circle","square")
-colors <- c("blue","red") 
-plot(bn,vertex.color=colors[V(bn)$type+1],
-vertex.shape=shapes[V(bn)$type+1], vertex.size=10,vertex.label.degree=-pi/2, vertex.label.dist=1.2,vertex.label.cex=0.9, layout=lay)
-```
-
-```{r}
-df = beneP %>% select(Provider,BeneID)
-binet <- graph.data.frame(df,directed=FALSE)
-binet
-```
-
-
-```{r}
-fraud = beneP %>% select(Provider,PotentialFraud)
-```
-
-```{r}
-V(binet)$type <- V(binet)$name %in% df[,1]
-V(binet)$actor <- ifelse(V(binet)$name %in% df[,1],'Provider','Patient')
-
-V(binet)$fraud <- ifelse(V(binet)$name %in% fraud[,1],fraud[,2],'')
-V(binet)$color <- ifelse(V(binet)$fraud == 'Yes' ,'red',
-                         ifelse(V(binet)$fraud == 'No','blue','black'))
-
-binet
-```
-
-```{r}
-shapes <- c("circle","square")
-colors <- c("blue","red") 
-plot(binet,
-     vertex.color=colors[V(bn)$type+1],
-     vertex.shape=shapes[V(bn)$type+1], 
-     vertex.size=10,vertex.label.degree=-pi/2, 
-     vertex.label.dist=1.2,
-     vertex.label.cex=0.9)
-```
-
-```{r}
-library(ggraph)
-library(igraph)
-
-ggraph(binet) +
-  geom_edge_arc(color="gray50", width=0.8, alpha=0.5, curvature=0.3) + 
-  geom_node_point(color = V(binet)$color) +
-  theme_bw() # add nodes to the plot
-```
-```{r}
-bn.pr <- bipartite.projection(binet)
+bn.pr <- bipartite.projection(bnet)
 bn.patient <- bn.pr$proj1 
 bn.provider <- bn.pr$proj2 
 graph.density(bn.patient)
-get.adjacency(bn.patient,sparse=FALSE,attr="weight")
+#get.adjacency(bn.patient,sparse=FALSE,attr="weight")
 ```
 ```{r}
 shapes <- c("circle","square") 
@@ -205,18 +99,37 @@ op <- par(mfrow=c(1,2))
 #      vertex.label.dist=1.2,vertex.label.cex=1)
 
 
-ggraph(bn.patient) +
-  geom_edge_arc(color="gray50", width=0.8, alpha=0.5, curvature=0.3) + 
+ggraph(bn.patient, layout='stress') +
+  geom_edge_link0(color="gray50", width=0.8, alpha=0.5) +  
   geom_node_point() +
-  theme_bw() # add nodes to the plot
+  geom_node_text(aes(filter = size >= 10, label = name, size=3),family="serif", repel=TRUE)+
+  theme_graph() +
+  theme(legend.position = "bottom")
 
 
-ggraph(bn.provider) +
-  geom_edge_arc(color="gray50", width=0.8, alpha=0.5, curvature=0.3) + 
-  geom_node_point(aes(color = fraud)) +
-  theme_bw() # add nodes to the plot
+ggraph(bn.provider, layout='stress') +
+  geom_edge_link0(color="gray50", width=0.8, alpha=0.5) +
+  geom_node_text(aes(filter = size >= 10, label = name, size=3),family="serif", repel=TRUE)+
+  geom_node_point(aes(color = fraud, size = size)) +
+  scale_size_continuous(range = c(1,5), guide=FALSE)+
+  theme_graph() +
+  theme(legend.position = "bottom")
 par(op)
 ```
+
+```{r}
+
+
+
+df.prom <- data.frame(
+  btw = betweenness(bn.provider), 
+  evc = evcent(bn.provider),
+  inf = infocent(bn.provider), 
+  flb = flowbet(bn.provider)
+)
+```
+
+
 ```{r}
 h2 <- subgraph.edges(h1, 
                      E(h1)[inc(V(h1)[name %in% c("The Wolf of Wall Street", 
