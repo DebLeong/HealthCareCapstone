@@ -1,7 +1,17 @@
 import pandas as pd 
 import numpy as np 
 from datetime import datetime
+import os
 
+try:
+    os.mkdir('./data')
+except:
+    pass
+
+try:
+    os.mkdir('./data/provData')
+except:
+    pass
 
 
 state_dict = {
@@ -139,6 +149,8 @@ def consolidate():
 	#################################################################################
 	# Write to CSV
 
+	provData(data,target)
+
 	data.to_csv('./data/combinedData.csv')
 	target.to_csv('./data/combinedTarget.csv')
 
@@ -225,8 +237,56 @@ def data_eng(data):
 
 	data['Age'] = round(((data['ClaimStartDt'] - data['DOB']).dt.days + 1)/365.25)
 
+	
+
+
 	return data
 
+def provData(data, target):
+	p = data.groupby(['Provider','Set']).agg({
+		'BeneID':'nunique',
+		'ClaimID' : 'count',
+		'State' : 'nunique',
+		}).reset_index()
+
+	#################################################################################
+	# Number of Unique Inpatients and Outpatients
+	d = data.groupby(['Provider','Status']).agg({
+		'ClaimID': 'count',
+		'BeneID' : 'nunique'}).reset_index().pivot_table(
+		values=['ClaimID','BeneID'], 
+		index = 'Provider', 
+		columns='Status').fillna(0)
+
+	d = d.reset_index()
+	d.columns = d.columns.map(''.join)
+
+	p = pd.merge(p,d, on = ['Provider'], how='left')
+
+	#################################################################################
+	# Number of Unique Doctors Associated With Provider
+	docs = data.melt(
+		id_vars = 'Provider', 
+		value_vars = ['AttendingPhysician','OperatingPhysician','OtherPhysician'], 
+		var_name='Type', 
+		value_name='Doctor').dropna(axis=0)
+
+	docs = docs[['Provider','Doctor']].drop_duplicates()
+
+	p['Doctors'] = docs.groupby('Provider')['Doctor'].count().values
+
+	p = pd.merge(p, target, on = ['Provider','Set'], how = 'left')
+
+	######
+	# Rename columns. Be careful if you add a feature make sure to put the new name in the right place!
+	#provData.columns = ['Provider','Set', 'Patients','Claims','States','Doctors','Fraud']
+
+	x_train = p[p.Set == 'Train'].drop(columns = ['Set'])
+	x_test = p[p.Set == 'Test'].drop(columns = ['Set','PotentialFraud'])
+
+	x_train.to_csv('./data/provData/x_train.csv')
+	x_test.to_csv('./data/provData/x_test.csv')
+	return
 
 def make_fake_names(data, columns = ['AttendingPhysician','OperatingPhysician','OtherPhysician']):
 	from faker import Faker

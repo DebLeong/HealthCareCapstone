@@ -1,0 +1,79 @@
+Looking at about 70 columns/features so far.
+
+Columns to add:
+	- Number of states each provider works/serves in
+		- Ready
+	- Number of providers each unique beneficiary has visited
+		- Ready	
+	- What else?
+		- Number of doctors each unique beneficiary has visited
+		- Number of providers each unique doctor is listed with
+
+Provider = provider that we're trying to judge (unique)
+PotentialFraud = label from kaggle as to whether a fraud
+
+EACH OF THESE COLUMNS BELOW WILL BE DUPLICATED FOR IN-PATIENT AND OUT-PATIENT:
+	(which one do we add here?)
+
+AttendingPhysician = number of attending physicians listed on claims with that provider as the provider
+	- Would this be useful? Naturally, large providers will have many attending physicians whether fraud or not
+logattnd = log of the number of patients
+	- Same concern, would create an ambiguous parameter for a predictive model, since frauds can occur with only one patient or with many
+
+
+
+For each of these range and mean metrics, it would be useful to look at a bar plot of provider distribution, colored by PotentialFraud ('hue' in sns)
+- For single beneficiary providers the range metrics would be zero, the count metrics would all be one, etc. 
+- This could potentially throw off a model that isn't a decision tree if the distribution of these small providers is sufficiently large
+	- what is sufficient to a particular model I think we'd have to run and see. 
+
+
+	(which one do we add here?)
+BeneID =  number of patients on that provider's claims
+logpts
+
+meanDiagCodes = average number of diagnostic claims on that provider's claims
+DiagcodesRange = the difference between the max number of diagnostic codes on claims and the minimum
+
+meanProcCodes = average number of procedural claims on that provider's claims
+ProcCodesRange = the difference between the max number of procedure codes on claims and the minimum
+
+MeanReimburse = average reimbursement per claim for that provider
+ReimburseRange = difference between max reimbursement and minimum reimbursement for claims
+
+	(which one do we add here?)
+ClaimCount = number of claims filed over the period with that provider
+logClmCount = nat log of number of claims
+
+LogClmsPerPhysician = number of cliams for provider divided by number of physicians
+
+LogClmsPerPatnt = number of cliams for provider divided by number of patients
+
+Not Outpatient Column(LOSRange = range between max and minimum admission days (diff btwn admit date and dischrg) for a provider)
+
+ClmDurationRange = range between max and minimum claim days (diff btwn admit date and dischrg) for a provider
+
+AgeRange = range from oldest patient to younges patient for a provider
+
+AveNumChronicPerPt = average number of chronic conditions per patient
+NumChronicsRange difference between max # chronic condition and minimum for provider's pts
+
+PctZero = percent of patient population that is 0 gender
+
+cardiology = fraction of procedures in cardiology (and same for each specialty below)
+urology
+endocrinology
+emergency
+general
+infectious
+oncology
+hematology
+psychiatry
+neurology
+pulmonology
+gastroenterology
+ob-gyn
+dermatology
+orthopedics
+congenital
+neonatology
