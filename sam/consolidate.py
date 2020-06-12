@@ -70,6 +70,9 @@ state_dict = {
 
 
 def consolidate():
+	'''
+	Code to consolidate all the data and generate data for EDA and modeling
+	'''
 
 	#################################################################################
 	# Read in Data
@@ -157,6 +160,9 @@ def consolidate():
 
 
 def bene_eng(bene):
+	'''
+	Feature Engineering for the Beneficiary dataset
+	'''
 	#################################################################################
 	# Clean Beneficiary Data
 	bene = bene.replace({'ChronicCond_Alzheimer': 2, 'ChronicCond_Heartfailure': 2, 'ChronicCond_KidneyDisease': 2,
@@ -200,6 +206,9 @@ def bene_eng(bene):
 	return bene
 
 def data_eng(data):
+	'''
+	Feature engineering for the data dataset
+	'''
 
 	
 	#################################################################################
@@ -243,10 +252,37 @@ def data_eng(data):
 	return data
 
 def provData(data, target):
+	'''
+	Creates aggregate provider dataframe
+	'''
 	p = data.groupby(['Provider','Set']).agg({
+		'Age': 'mean',
+		'Gender' : 'mean', # proportion of claims involving males (Gender=1) (not unique to Beneificiaries)
 		'BeneID':'nunique',
 		'ClaimID' : 'count',
 		'State' : 'nunique',
+		'AttendingPhysician': 'nunique',
+		'OperatingPhysician': 'nunique',
+		'OtherPhysician': 'nunique',
+		'NumProc': 'mean',
+		'NumDiag' : 'mean',
+		'NumChronics': 'mean',
+		'InscClaimAmtReimbursed' : 'mean',
+		'DeductibleAmtPaid' : 'mean',
+		'ClaimDays' : 'mean',
+		'AdmissionDays' : 'mean',
+		'WhetherDead': 'mean', # proportion of dead patients (might need to take negative log to get anything large)
+		'Alzheimer' : 'mean',
+		'HeartFailure': 'mean', 
+		'KidneyDisease' : 'mean',
+		'Cancer': 'mean', 
+		'ObstrPulmonary': 'mean',
+		'Depression': 'mean', 
+		'Diabetes': 'mean', 
+		'IschemicHeart': 'mean', 
+		'Osteoporasis': 'mean',
+	    'RheumatoidArthritis': 'mean',
+	     'Stroke': 'mean'
 		}).reset_index()
 
 	#################################################################################
@@ -282,6 +318,7 @@ def provData(data, target):
 	#provData.columns = ['Provider','Set', 'Patients','Claims','States','Doctors','Fraud']
 
 	x_train = p[p.Set == 'Train'].drop(columns = ['Set'])
+	x_train['PotentialFraud'] = (x_train['PotentialFraud'] == 'Yes') + 0 # Convert to binary
 	x_test = p[p.Set == 'Test'].drop(columns = ['Set','PotentialFraud'])
 
 	x_train.to_csv('./data/provData/x_train.csv')
