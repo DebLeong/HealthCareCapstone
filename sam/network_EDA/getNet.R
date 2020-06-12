@@ -2,8 +2,8 @@
 
 propat = function(data, state, county){
   if(county == 'all'){
-    county = data %>% 
-      filter(State %in% state) %>% 
+    county = data %>%
+      filter(State %in% state) %>%
       distinct(County) %>% pull
   }
   

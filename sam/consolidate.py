@@ -255,6 +255,9 @@ def provData(data, target):
 	'''
 	Creates aggregate provider dataframe
 	'''
+
+	def rangeFunc(feature):
+		return max(feature) - min(feature)
 	p = data.groupby(['Provider','Set']).agg({
 		'Age': 'mean',
 		'Gender' : 'mean', # proportion of claims involving males (Gender=1) (not unique to Beneificiaries)
@@ -284,6 +287,26 @@ def provData(data, target):
 	    'RheumatoidArthritis': 'mean',
 	     'Stroke': 'mean'
 		}).reset_index()
+
+	p['logClaim'] = np.log(p['ClaimID'])
+	p['logBene'] = np.log(p['BeneID'])
+
+
+	#####
+	# Create ranges 
+	p_range = data.groupby(['Provider','Set']).agg({
+		'Age' : rangeFunc,
+		'NumProc': rangeFunc,
+		'NumDiag' : rangeFunc,
+		'NumChronics': rangeFunc,
+		'InscClaimAmtReimbursed' : rangeFunc,
+		'ClaimDays' : rangeFunc
+		}).reset_index()
+
+	p_range.columns += '_Range'
+
+	## No need to merge on Provider AND Set since Provider can only be in either Train or Test
+	p = pd.merge(p,p_range, on = ['Provider'], how='left')
 
 	#################################################################################
 	# Number of Unique Inpatients and Outpatients

@@ -27,31 +27,117 @@ Though for large states or patdoc networks this is not recommended since it take
 
 ```{r}
 source("analNet.R")
-
-netAnal(data, state = 'Alaska', county = c(200), type='propat', layout = 'stress')
+state = 'California'
+county = c(100)
+netAnal(data, state, county, type='propat', layout = 'stress')
+netAnal(data, state, county, type='prodoc', layout = 'stress')
+netAnal(data, state, county, type='patdoc', layout = 'stress')
 ```
 
 ```{r}
 source("getNet.R")
 source("plotNet.R")
-require(tidyverse)
-require(network)
-require(ggraph)
-require(igraph)
-require(graphlayouts)
 
 
-bnet = propat(data, c('Alaska'), c(100))
+bnet = propat(data, c('California'), 'all')
 
-detach(package:network)
-detach(package:igraph)
-plotProPat(bnet)
+#plotProDoc(bnet, layout = 'stress')
+
+plot(log(degree.distribution(bnet)),
+     type="b",xlab="Degree",ylab="Proportion")
+
+#ggsave(filename=paste0('../visualizations/networks/texas100_patdoc_stress.png'),plot=last_plot())
+op <- par(mfrow=c(1,2)) 
+plot(degree.distribution(bnet),xlab="Degree", ylab="Proportion") 
+plot(degree.distribution(g), xlab="Degree",ylab="Proportion") 
+par(op)
 ```
+
+```{r}
+# for (state in data$State %>% unique()){
+#   bnet = propat(data, state, 'all')
+#   bn.pr <- bipartite.projection(bnet)
+#   bn.provider <- bn.pr$proj2
+#   
+#   degrees = degree(bn.provider)
+#   t = tibble(names(degrees),degrees)
+# }
+
+# 
+datalist = list()
+# 
+for (state in data$State %>% unique()) {
+    # ... make some data
+    bnet = propat(data, state, 'all')
+    bn.pr <- bipartite.projection(bnet)
+    bn.provider <- bn.pr$proj2
+    degrees = degree(bn.provider)
+    datalist[[state]] <- tibble(names(degrees), degrees) # add it to your list
+}
+
+
+
+big_data <- dplyr::bind_rows(datalist)
+# or big_data <- data.table::rbindlist(datalist)
+colnames(big_data) = c('Provider','NumProvConnected')
+
+
+```
+
+```{r}
+for (state in data$State %>% unique()) {
+    # ... make some data
+    bnet = prodoc(data, state, 'all')
+    bn.pr <- bipartite.projection(bnet)
+    bn.provider <- bn.pr$proj2
+    degrees = degree(bn.provider)
+    datalist[[state]] <- tibble(names(degrees), degrees) # add it to your list
+}
+```
+
+
+
 ```{r}
 
+g <- barabasi.game(500, directed = TRUE,
+                   out.dist = c(0.25, 0.4, 0.35), 
+                   zero.appeal = 1)
+V(g)$color <- "lightblue"
+V(g)[degree(g) > 9]$color <- "red"
+V(g)$degree = degree(g)
 
+ggraph(g, layout='stress')+
+    geom_edge_link0(alpha=0.5, edge_colour = "grey66") + 
+    #geom_node_point(aes(color = fraud, size = size), shape = V(bnet)$shape) +
+    geom_node_point(aes(
+      #fitler = size >= 10,
+      color = color,
+      size=degree)) +
+    scale_size_continuous(range = c(1,5), guide=FALSE)+
+    theme_graph() +
+    theme(legend.position = "bottom")
 
+```
+```{r}
+vignette('ergm-term-crossRef')
+```
+```{r}
+crnd <- runif(500,1,8)
+cmp_prp <- sapply(crnd,function(x)
+max(clusters(erdos.renyi.game(n=1000, p=x/999))$csize)/1000)
 
+smoothingSpline <- smooth.spline(crnd,cmp_prp, spar=0.25)
+plot(crnd,cmp_prp,col='grey60', xlab="Avg. Degree",
+ylab="Largest Component Proportion") 
+lines(smoothingSpline,lwd=1.5)
+```
+```{r}
+library(lattice)
+
+n_vect <- rep(c(50,100,500,1000,5000),each=50) 
+g_diam <- sapply(n_vect,function(x) diameter(erdos.renyi.game(n=x,p=6/(x-1))))
+bwplot(g_diam ~ factor(n_vect), panel = panel.violin,
+    xlab = "Network Size", ylab = "Diameter")
 ```
 
 
@@ -74,6 +160,16 @@ ggraph(bnet, layout ='stress')+
     #ggsave(filename=paste0('./visualizations/networks/pb_5_200_sugiyama.png'),plot=last_plot())
 }
 ```
+
+```{r}
+
+
+
+
+```
+
+
+
 
 
 ```{r}
