@@ -3,4 +3,3 @@ deb/data
 deb/*.csv
 sam/data
 sam/*.csv
-*.csv
