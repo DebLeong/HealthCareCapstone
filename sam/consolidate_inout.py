@@ -8,6 +8,11 @@ try:
 except:
     pass
 
+try:
+    os.mkdir('./data/provData')
+except:
+    pass
+
 
 state_dict = {
  1: 'Alabama',
@@ -147,6 +152,27 @@ def consolidate():
 	#################################################################################
 	# Write to CSV
 
+	## Define function to split and generate features separately for both in and out
+	def provData_InOut(inpat, outpat):
+
+		provIn_train, provIn_test   = provData(inpat)
+		provOut_train, provOut_test = provData(outpat)
+
+		provIn_train.to_csv('./data/provData/provIn_train.csv')
+		provIn_test.to_csv('./data/provData/provIn_test.csv')
+
+
+		provOut_train.to_csv('./data/provData/provOut_train.csv')
+		provOut_test.to_csv('./data/provData/provOut_test.csv')
+
+	# Generate split data based on in and out features
+	inpat = data[data.Status=='in']
+	outpat = data[data.Status=='out']
+
+	provData_InOut(inpat, outpat)
+
+	#provWhole = provData(data,target)
+
 	data.to_csv('./data/combinedData.csv')
 	target.to_csv('./data/combinedTarget.csv')
 
@@ -239,6 +265,107 @@ def data_eng(data):
 
 	return data
 
+
+
+def provData(data):
+	'''
+	Creates aggregate provider dataframe
+	'''
+
+	def rangeFunc(feature):
+		return max(feature) - min(feature)
+	p = data.groupby(['Provider','Set']).agg({
+		'Age': 'mean',
+		'Gender' : 'mean', # proportion of claims involving males (Gender=1) (not unique to Beneificiaries)
+		'BeneID':'nunique',
+		'ClaimID' : 'count',
+		'State' : 'nunique',
+		'AttendingPhysician': 'nunique',
+		'OperatingPhysician': 'nunique',
+		'OtherPhysician': 'nunique',
+		'NumProc': 'mean',
+		'NumDiag' : 'mean',
+		'NumChronics': 'mean',
+		'InscClaimAmtReimbursed' : 'mean',
+		'DeductibleAmtPaid' : 'mean',
+		'ClaimDays' : 'mean',
+		'AdmissionDays' : 'mean',
+		'WhetherDead': 'mean', # proportion of dead patients (might need to take negative log to get anything large)
+		'Alzheimer' : 'mean',
+		'HeartFailure': 'mean', 
+		'KidneyDisease' : 'mean',
+		'Cancer': 'mean', 
+		'ObstrPulmonary': 'mean',
+		'Depression': 'mean', 
+		'Diabetes': 'mean', 
+		'IschemicHeart': 'mean', 
+		'Osteoporasis': 'mean',
+	    'RheumatoidArthritis': 'mean',
+	     'Stroke': 'mean'
+		}).reset_index()
+
+	p['logClaim'] = np.log(p['ClaimID'])
+	p['logBene'] = np.log(p['BeneID'])
+
+
+	#####
+	# Create ranges 
+	p_range = data.groupby(['Provider','Set']).agg({
+		'Age' : rangeFunc,
+		'NumProc': rangeFunc,
+		'NumDiag' : rangeFunc,
+		'NumChronics': rangeFunc,
+		'InscClaimAmtReimbursed' : rangeFunc,
+		'ClaimDays' : rangeFunc
+		}).reset_index()
+
+	p_range.columns += '_Range'
+
+	## No need to merge on Provider AND Set since Provider can only be in either Train or Test
+	p = pd.merge(p,p_range, left_on = ['Provider'], right_on = ['Provider_Range'], how='left')
+
+	#################################################################################
+	# Number of Unique Inpatients and Outpatients
+	# d = data.groupby(['Provider','Status']).agg({
+	# 	'ClaimID': 'count',
+	# 	'BeneID' : 'nunique'}).reset_index().pivot_table(
+	# 	values=['ClaimID','BeneID'], 
+	# 	index = 'Provider', 
+	# 	columns='Status').fillna(0)
+
+	# d = d.reset_index()
+	# d.columns = d.columns.map('_'.join)
+
+	# p = pd.merge(p,d, left_on = ['Provider'], right_on = ['Provider_'], how='left')
+
+	#################################################################################
+	# Number of Unique Doctors Associated With Provider
+	docs = data.melt(
+		id_vars = 'Provider', 
+		value_vars = ['AttendingPhysician','OperatingPhysician','OtherPhysician'], 
+		var_name='Type', 
+		value_name='Doctor').dropna(axis=0)
+
+	docs = docs[['Provider','Doctor']].drop_duplicates()
+
+	p['Doctors'] = docs.groupby('Provider')['Doctor'].count().values
+
+	#p = pd.merge(p, target, on = ['Provider','Set'], how = 'left')
+
+	######
+	# Rename columns. Be careful if you add a feature make sure to put the new name in the right place!
+	#provData.columns = ['Provider','Set', 'Patients','Claims','States','Doctors','Fraud']
+
+	p.drop(columns = ['Provider_Range'], inplace=True)
+
+
+	x_train = p[p.Set == 'Train'].drop(columns = ['Set'])
+	#x_train['PotentialFraud'] = (x_train['PotentialFraud'] == 'Yes') + 0 # Convert to binary
+	x_test = p[p.Set == 'Test'].drop(columns = ['Set'])
+
+	# x_train.to_csv('./data/provData/x_train.csv')
+	# x_test.to_csv('./data/provData/x_test.csv')
+	return (x_train, x_test)
 
 def make_fake_names(data, columns = ['AttendingPhysician','OperatingPhysician','OtherPhysician']):
 	from faker import Faker
