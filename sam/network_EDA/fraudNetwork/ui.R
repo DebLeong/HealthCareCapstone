@@ -16,8 +16,8 @@ bootstrapPage(
                       div(
                         tags$style(type = "text/css", "#plot {height: calc(100vh - 80px) !important;}"),
                         absolutePanel(id='controls',
-                                      top = 100, left = 40, width = "auto", fixed=TRUE,
-                                      draggable = FALSE, height = "auto",
+                                      top = 100, left = 40, width = "200px", fixed=TRUE,
+                                      draggable = FALSE, height = "500px",
                                       
                                       style = "font-size: 16px !important;",
                                       

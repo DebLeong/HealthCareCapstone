@@ -1,5 +1,8 @@
 library(shiny)
 library(tidyverse)
+if(!require(igraph)) install.packages("igraph", repos = "http://cran.us.r-project.org")
+if(!require(ggraph)) install.packages("ggraph", repos = "http://cran.us.r-project.org")
+
 
 
 # source("./network/getNet.R", local=TRUE)
@@ -50,7 +53,7 @@ propat = function(data, state, county){
   V(Bnet)$type <- V(Bnet)$name %in% connections[,1]
   V(Bnet)$actor <- ifelse(V(Bnet)$name %in% connections[,1],'Provider','Patient')
   V(Bnet)$fraud <- ifelse(V(Bnet)$name %in% fraud[,1],fraud[,2],'Patient')
-  V(Bnet)$fraud <- factor(V(Bnet)$fraud, levels = c('Yes','?','No','Patient'))
+  #V(Bnet)$fraud <- factor(V(Bnet)$fraud, levels = c('Yes','?','No','Patient'))
   V(Bnet)$size <- degree(Bnet)
   V(Bnet)$shape <- shapes[V(Bnet)$type+1]
   # Create 4 new features for connectivity of providers based on bipartite projection graphs based on 
@@ -85,7 +88,7 @@ prodoc = function(data, state, county){
   V(Bnet)$type <- V(Bnet)$name %in% connections[,1]
   V(Bnet)$actor <- ifelse(V(Bnet)$name %in% connections[,1],'Provider','Doctor')
   V(Bnet)$fraud <- ifelse(V(Bnet)$name %in% fraud[,1],fraud[,2],'Doctor')
-  V(Bnet)$fraud <- factor(V(Bnet)$fraud, levels =c('Yes','?','No','Doctor'))
+  #V(Bnet)$fraud <- factor(V(Bnet)$fraud, levels =c('Yes','?','No','Doctor'))
   V(Bnet)$size <- degree(Bnet)
   
   V(Bnet)$shape <- shapes[V(Bnet)$type+1]
@@ -138,7 +141,8 @@ plotProPat = function(bnet, state, county, layout){
       size = size), shape = V(bnet)$shape) +
     geom_node_text(aes(filter = size >= 50, label = name, size=3),family="serif", repel=TRUE)+
     scale_color_brewer(palette = "Set1",
-                       name = "Fraud", labels=c('Yes','?','No','Patient'))+
+                       #labels=c('Yes','?','No','Patient'),
+                       name = "Fraud") +
     scale_edge_width_continuous(range = c(0.2,3), guide=FALSE)+
     scale_size_continuous(range = c(2,6), guide=FALSE)+
     theme_graph() +theme(legend.position = "left")
@@ -155,7 +159,8 @@ plotProDoc = function(bnet, state, county, layout){
       size = size), shape = V(bnet)$shape) +
     geom_node_text(aes(filter = size >= 50, label = name, size=3),family="serif", repel=TRUE)+
     scale_color_brewer(palette = "Set1",
-                       name = "Fraud", labels=c('Yes','?','No','Doctor'))+
+                       #labels=c('Yes','?','No','Doctor'),
+                       name = "Fraud") +
     scale_edge_width_continuous(range = c(0.2,3), guide=FALSE)+
     scale_fill_manual(values = palette) +
     scale_size_continuous(range = c(2,6), guide=FALSE)+
@@ -178,7 +183,7 @@ plotPatDoc = function(bnet, state, county, layout){
 }
 
 ################################################################################################
-plotActor = function(net, title, layout = 'stress', provider = FALSE){
+plotActor = function(net, title, layout = 'kk', provider = FALSE){
   g= ggraph(net, layout = layout)+
     geom_edge_link0(alpha=0.5, edge_colour = "grey66")
   if (provider){
@@ -198,7 +203,8 @@ plotActor = function(net, title, layout = 'stress', provider = FALSE){
       size = size)) +
       #geom_node_text(aes(filter = size >= 10, label = name, size=3),family="serif", repel=TRUE)+
       scale_color_brewer(palette = "Set1",
-                           name = "Fraud", labels=c('Yes','?','No'))+
+                         #labels=c('Yes','?','No'),
+                         name = "Fraud") +
       scale_edge_width_continuous(range = c(0.2,3), guide=FALSE)+
       scale_size_continuous(range = c(2,6), guide=FALSE) +
       theme_graph() + theme(legend.position = "right") + 

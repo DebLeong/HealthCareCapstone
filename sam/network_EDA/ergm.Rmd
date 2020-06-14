@@ -7,7 +7,7 @@ output: html_notebook
 ```{r}
 detach(package:network)
 detach(package:statnet)
-detach(package:ergm)
+library(ergm)
 data(florentine)
 plot(flomarriage)
 plot(flobusiness)
