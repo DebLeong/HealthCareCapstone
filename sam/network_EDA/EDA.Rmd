@@ -27,10 +27,10 @@ Though for large states or patdoc networks this is not recommended since it take
 
 ```{r}
 source("analNet.R")
-state = 'California'
-county = c(100)
+state = 'Oklahoma'
+county = c(100,200)
 netAnal(data, state, county, type='propat', layout = 'stress')
-netAnal(data, state, county, type='prodoc', layout = 'stress')
+netAnal(data, state, county, type='prodoc', layout = 'kk')
 netAnal(data, state, county, type='patdoc', layout = 'stress')
 ```
 
@@ -39,7 +39,7 @@ source("getNet.R")
 source("plotNet.R")
 
 
-bnet = propat(data, c('California'), 'all')
+bnet = propat(data, c('Oklahoma'), 100)
 
 #plotProDoc(bnet, layout = 'stress')
 
@@ -54,33 +54,81 @@ par(op)
 ```
 
 ```{r}
-# for (state in data$State %>% unique()){
-#   bnet = propat(data, state, 'all')
-#   bn.pr <- bipartite.projection(bnet)
-#   bn.provider <- bn.pr$proj2
-#   
-#   degrees = degree(bn.provider)
-#   t = tibble(names(degrees),degrees)
-# }
 
-# 
+mean_path_length = function(net){
+  paths = data.frame(distances(net, v=V(net), 
+                               to = V(net)))
+  isolated = which(degree(net)==0)
+  if (length(isolated)!=0){
+    paths_rowdel = paths[-isolated,]
+    paths_coldel = paths_rowdel[,-isolated]
+    paths_mean = rowSums(paths_coldel)/length(paths_coldel)
+  } else {
+    paths_mean = rowSums(paths)/length(paths)
+  }
+  return(paths_mean)
+
+}
+
 datalist = list()
-# 
+pathlist = list()
+
 for (state in data$State %>% unique()) {
     # ... make some data
     bnet = propat(data, state, 'all')
     bn.pr <- bipartite.projection(bnet)
     bn.provider <- bn.pr$proj2
+    
+    # Calculate Mean Path Length to Each Node
+    mean_paths = mean_path_length(bn.provider)
+    mean_paths = tibble(names(mean_paths), mean_paths)
+    colnames(mean_paths) = c('Provider','Mean.Path')
+    pathlist[[state]] = mean_paths
+    
+    # Calculate Degrees
     degrees = degree(bn.provider)
-    datalist[[state]] <- tibble(names(degrees), degrees) # add it to your list
+    degrees = tibble(names(degrees), degrees)
+    colnames(degrees) = c('Provider','NumDocNet')
+    
+    #data.agg = degrees %>% left_join(mean_paths, by='Provider')
+    
+    datalist[[state]] = degrees# add it to your list
 }
 
 
 
-big_data <- dplyr::bind_rows(datalist)
-# or big_data <- data.table::rbindlist(datalist)
-colnames(big_data) = c('Provider','NumProvConnected')
+propatDeg <- dplyr::bind_rows(datalist)
+propatPath <- dplyr::bind_rows(pathlist)
 
+#############################################################################
+
+datalist = list()
+pathlist = list()
+
+for (state in data$State %>% unique()) {
+    # ... make some data
+    bnet = prodoc(data, state, 'all')
+    bn.pr <- bipartite.projection(bnet)
+    bn.provider <- bn.pr$proj2
+    
+    # Calculate Mean Path Length to Each Node
+    mean_paths = mean_path_length(bn.provider)
+    mean_paths = tibble(names(mean_paths), mean_paths)
+    colnames(mean_paths) = c('Provider','Mean.Path')
+    pathlist[[state]] = mean_paths
+    
+    # Calculate Degrees
+    degrees = degree(bn.provider)
+    degrees = tibble(names(degrees), degrees)
+    colnames(degrees) = c('Provider','NumDocNet')
+    
+    #data.agg = degrees %>% left_join(mean_paths, by='Provider')
+    
+    datalist[[state]] = degrees# add it to your list
+}
+
+prodocDeg <- dplyr::bind_rows(datalist)
+prodocPath <- dplyr::bind_rows(pathlist)
 
 ```
 
@@ -94,8 +142,56 @@ for (state in data$State %>% unique()) {
     datalist[[state]] <- tibble(names(degrees), degrees) # add it to your list
 }
 ```
+```{r}
+
+write_csv(prodocNet,'../data/prodocNet.csv')
+write_csv(propatNet,'../data/propatNet.csv')
+
+prodocNet = prodocNet %>% group_by(Provider) %>% 
+  summarise(max = max(NumDocNet), min = min(NumDocNet), mean = mean(NumDocNet))
+
+propatNet = propatNet %>% group_by(Provider) %>% 
+  summarise(max = max(NumBenNet), min = min(NumBenNet), mean = mean(NumBenNet))
+
+colnames(propatNet) = c('Provider','patNet_max','patNet_min','patNet_mean')
+colnames(prodocNet) = c('Provider','docNet_max','docNet_min','docNet_mean')
+write_csv(prodocNet,'../../prodocNet.csv')
+write_csv(propatNet,'../../propatNet.csv')
+
+```
+
+```{r}
+bnet = propat(data, c('Oklahoma'), 100)
+bn.pr = bipartite.projection(bnet)
+bn.provider <- bn.pr$proj2
+V(bn.provider)$fraud
+V(bnet)$fraud
 
 
+
+```
+```{r}
+# wc = cluster_fast_greedy(bnet)
+# modularity(wc)
+# membership(wc)
+# 
+# #plot(distance_table(bn.provider, directed = FALSE))
+# mean_distance(bn.provider)
+
+# By default weighted by graph edge weights unless passed
+# Algo is chosen to take into account edge weights
+bnet = propat(data, c('Alabama'), 'all')
+bn.pr = bipartite.projection(bnet)
+bn.provider <- bn.pr$proj2
+
+paths = data.frame(distances(bn.provider, v=V(bn.provider), to = V(bn.provider)))
+isolated = which(degree(bn.provider)==0)
+paths_rowdel = paths[-isolated,]
+paths_coldel = paths_rowdel[,-isolated]
+paths_mean = rowSums(paths_coldel)/(length(paths_coldel)-1)
+paths_mean
+
+```
 
 ```{r}
 

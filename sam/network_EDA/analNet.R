@@ -6,21 +6,18 @@ require(ggraph)
 require(igraph)
 require(graphlayouts)
 
-
-
-
 netAnal = function(data, state, county, 
                    type = 'propat', layout = 'stress', 
                    saveFile = FALSE){
   
   if (type == 'propat'){
     bnet = propat(data, state, county)
-    plotProPat(bnet, layout = layout, save = saveFile)
+    plotProPat(bnet, state, county, layout = layout, save = saveFile)
   } else if (type == 'prodoc') {
     bnet = prodoc(data, state, county)
-    plotProDoc(bnet, layout = layout, save = saveFile)
+    plotProDoc(bnet, state, county, layout = layout, save = saveFile)
   } else if (type == 'patdoc') {
     bnet = patdoc(data, state, county)
-    plotPatDoc(bnet, layout = layout, save = saveFile)
+    plotPatDoc(bnet, state, county, layout = layout, save = saveFile)
   } 
 }

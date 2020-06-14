@@ -36,6 +36,8 @@ propat = function(data, state, county){
   
   V(Bnet)$fraud <- ifelse(V(Bnet)$name %in% fraud[,1],fraud[,2],'Patient')
   
+  V(Bnet)$fraud <- factor(V(Bnet)$fraud, levels = c('Yes','?','No','Patient'))
+
   V(Bnet)$size <- degree(Bnet)
   
   #V(Bnet)$dead <- ifelse(V(Bnet)$name %in% dead[,1], dead[,2], 0)
@@ -86,9 +88,12 @@ prodoc = function(data, state, county){
   
   V(Bnet)$type <- V(Bnet)$name %in% connections[,1]
   
-  V(Bnet)$actor <- ifelse(V(Bnet)$name %in% connections[,1],'Provider','Patient')
+  V(Bnet)$actor <- ifelse(V(Bnet)$name %in% connections[,1],'Provider','Doctor')
   
   V(Bnet)$fraud <- ifelse(V(Bnet)$name %in% fraud[,1],fraud[,2],'Doctor')
+  
+  V(Bnet)$fraud <- factor(V(Bnet)$fraud, levels =c('Yes','?','No','Doctor'))
+
   
   V(Bnet)$size <- degree(Bnet)
   

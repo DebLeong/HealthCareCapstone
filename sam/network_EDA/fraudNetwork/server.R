@@ -7,34 +7,70 @@
 #    http://shiny.rstudio.com/
 #
 
-library(shiny)
 
 # Define server logic required to draw a histogram
-shinyServer(function(input, output) {
-
-    output$network = renderVisNetwork({
-        load("../nodes.RData")
-        load("../edges.RData")
+shinyServer(function(input, output, session) {
     
-        
-        visNetwork(nodes, edges, width = "100%") %>%
-            visIgraphLayout() %>%
-            visNodes(
-                shape = "dot",
-                color = list(
-                    background = "#0085AF",
-                    border = "#013848",
-                    highlight = "#FF8000"
-                ),
-                shadow = list(enabled = TRUE, size = 10)
-            ) %>%
-            visEdges(
-                shadow = FALSE,
-                color = list(color = "#0085AF", highlight = "#C62F4B")
-            ) %>%
-            visOptions(highlightNearest = list(enabled = T, degree = 1, hover = T),
-                       selectedBy = "group") %>% 
-            visLayout(randomSeed = 11)
+    net = reactive({
+        type = input$network_type_select
+        if (type == 'Provider-Patient'){
+            propat(data, input$state_select, input$county_select)
+        } else if (type == 'Provider-Doctor') {
+            prodoc(data, input$state_select, input$county_select)
+        } else if (type == 'Patient-Doctor') {
+            patdoc(data, input$state_select, input$county_select)
+        } 
     })
+    
+    
+    output$plot = renderPlot({
+        type = input$network_type_select
+        bnet = net()
+        if (type == 'Provider-Patient'){
+            plotProPat(bnet, input$state_select, input$county_select, layout = input$layout_select)
+        } else if (type == 'Provider-Doctor') {
+            plotProDoc(bnet, input$state_select, input$county_select, layout = input$layout_select)
+        } else if (type == 'Patient-Doctor') {
+            plotPatDoc(bnet, input$state_select, input$county_select, layout = input$layout_select)
+        } 
+    })
+    
+    output$actor1_plot = renderPlot({
+        projection = bipartite.projection(net())
+        bn.actor1 = projection$proj1
+        
+        if (grepl('PRV',V(bn.actor1)$name[1], fixed=TRUE)){
+            plotActor(bn.actor1, "Provider Network" ,provider = TRUE)
+        } else if (grepl('PHYS',V(bn.actor1)$name[1], fixed=TRUE)){
+            plotActor(bn.actor1, "Doctor Network",provider = FALSE)
+        } else {
+            plotActor(bn.actor1, "Patient Network",provider = FALSE)
+        }
+    })
+    
+    output$actor2_plot = renderPlot({
+        projection = bipartite.projection(net())
+        bn.actor2 = projection$proj2
+        
+        if (grepl('PRV',V(bn.actor2)$name[1], fixed=TRUE)){
+            plotActor(bn.actor2, "Provider Network" ,provider = TRUE)
+        } else if (grepl('PHYS',V(bn.actor2)$name[1], fixed=TRUE)){
+            plotActor(bn.actor2, "Doctor Network",provider = FALSE)
+        } else {
+            plotActor(bn.actor2, "Patient Network",provider = FALSE)
+        }
+    })
+    
+    observeEvent(input$state_select, {
+        choices =
+            data %>%
+            filter(State == input$state_select) %>%
+            distinct(County)
+        
+        updatePickerInput(session = session, inputId = 'county_select', 
+                          choices = sort(choices[[1]]), selected = 0)
+    })
+
+
 
 })
