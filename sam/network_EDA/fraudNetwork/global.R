@@ -54,7 +54,7 @@ propat = function(data, state, county){
   V(Bnet)$actor <- ifelse(V(Bnet)$name %in% connections[,1],'Provider','Patient')
   V(Bnet)$fraud <- ifelse(V(Bnet)$name %in% fraud[,1],fraud[,2],'Patient')
   #V(Bnet)$fraud <- factor(V(Bnet)$fraud, levels = c('Yes','?','No','Patient'))
-  V(Bnet)$size <- degree(Bnet)
+  V(Bnet)$size <- 4*sqrt(strength(Bnet))
   V(Bnet)$shape <- shapes[V(Bnet)$type+1]
   # Create 4 new features for connectivity of providers based on bipartite projection graphs based on 
   # doctor and patient networks
@@ -89,7 +89,7 @@ prodoc = function(data, state, county){
   V(Bnet)$actor <- ifelse(V(Bnet)$name %in% connections[,1],'Provider','Doctor')
   V(Bnet)$fraud <- ifelse(V(Bnet)$name %in% fraud[,1],fraud[,2],'Doctor')
   #V(Bnet)$fraud <- factor(V(Bnet)$fraud, levels =c('Yes','?','No','Doctor'))
-  V(Bnet)$size <- degree(Bnet)
+  V(Bnet)$size <- 4*sqrt(strength(Bnet))
   
   V(Bnet)$shape <- shapes[V(Bnet)$type+1]
   # Create 4 new features for connectivity of providers based on bipartite projection graphs based on 
@@ -121,7 +121,7 @@ patdoc = function(data, state, county){
   ## Add attributes
   shapes <- c(25,21)
   V(Bnet)$type <- V(Bnet)$name %in% connections[,1]
-  V(Bnet)$size <- degree(Bnet)
+  V(Bnet)$size <- 4*sqrt(strength(Bnet))
   V(Bnet)$shape <- shapes[V(Bnet)$type+1]
   # Create 4 new features for connectivity of providers based on bipartite projection graphs based on 
   # doctor and patient networks

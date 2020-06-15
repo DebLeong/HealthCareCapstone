@@ -6,23 +6,61 @@ Medical Detectives: Team Notes
 
 :dart: MD Goal
 ---
+
 - Identify Fraud within a medical network
+    - Raise F1 Score on Fraudulent Providers to 0.70 for Logistic Model
+        - ==0.62 achieved with LASSO feature selection and CV==
+    - Raise F1 Score on Fraudulent Providers to 0.75 for Random Forest
+        - ==0.64 achieved==
+- Target Large Providers
 - Decompose Fraud classification down to the doctor and beneficiary level
 - Provide investigative tool for insurance companies
+    - ==R Shiny App V.1 Completed==
 ___
 
-:books: MD Backlog
+:books: MD Backlog (stuff we haven't started on)
 ---
-- Basic Model Setup
-- Extract metrics from Network Graphs
-- Setup SQL server
-- Setup Shiny APP
+- Presentation Draft
+- MBA Analysis
+- More types of Models and Combinations
+    - PCA -> Logistiic
+    - Clustering -> SVM
+    - Neural Network
 
 :books: Meeting Notes
 ---
 
 Daily Meeting
 ---
+### Doug:
+#### - DecisionTrees
+    - false neg rate in RF is lower than LogReg, but false pos is higher
+    - considering adding in features from LogReg
+    - 90% of frauds caught by RF
+    - Using RFECV
+    - More False Positives from changing diagnostic code mapping
+    - Wrote own min-max scaling since sklearn version not working
+#### - GradientBoost
+    - Worse performance than Random Forest
+    - Experimenting on best weighting for positives
+
+### Sam:
+#### - R Shiny App
+    - Slow for large networks 
+        - for really large ones it crashes
+    - want to incorporate SQL calls to offload computation
+#### - Feature Engineering
+    - creation of fraud specific link features from network data
+    - creation of size binary feature
+    - creation of county density feature
+#### - Network Modeling
+    - Exploring Nearest Neighbor Prediction models - "Guilt by Association"
+    
+
+### Deborah:
+#### - SQL
+#### - MBA
+
 
 Luke Meeting
 ---
@@ -30,10 +68,6 @@ Luke Meeting
 
 - Visualizations
     - Networks
-        - Simple metric to Start
-            - Density
-            - Connectivity
-            - Limited amount of time
         - Cluster Analysis of Networks
     - Aggregate Graphs
 - Modeling
@@ -42,19 +76,6 @@ Luke Meeting
         - Dummified inpat/outpat with patient attributes
         - LASSO loses confidence interval
         - Still preserves beta change
-    - NLP Work on Diagnostic Codes?
-        - Problems:
-            - Lack of large data set
-            - Words very specific and rare
-        - Already have bins for diagnostic code buckets
-        - Term Frequency better metric
-
-
-
-3. Final Product
-    - Shiny App
-        - No discussion
-    - Presentation
 
 
 
@@ -90,31 +111,34 @@ Luke Meeting
 ### Feature Engineering:
 
 - Sam
-    - [ ] Add linkages per beneficiary network and doctor network
-    - [ ] Finish consolidate file
+    - [x] Add linkages per beneficiary network and doctor network
+    - [x] Finish consolidate file
     - [ ] Number of patients per physician (doctor:patient ratio)
 
 ### Modeling:
 - Doug
-    - [ ] Tree Based Modeling
-        - [ ] [6/13] Random Forest
-            - [ ] Dummification of Variables
-            - [ ] Upsampling / Class Balance
-        - [ ] [6/14] Parameter Tuned RF 
+    - [x] Tree Based Modeling
+        - [x] [6/13] Random Forest
+            - [x] Dummification of Variables
+            - [x] Upsampling / Class Balance
+        - [ ] [6/16] Gradient Boost
+    - [ ] [6/17] SVM 
 - Sam
-    - [ ] Logistic Regression
-        - [ ] [6/12] Single Variable Logistic Series
-        - [ ] [6/13] Lasso Penalty Multivariable Logistic
-            - [ ] Dummification of Variables
+    - [x] Logistic Regression
+        - [x] [6/13] Lasso Penalty Multivariable Logistic
+            - [x] Dummification of Variables
+        - [ ] [6/17] AIC Stepwise Selection on Features
+    - [ ] [6/16] NN Network Model
 
 
 ### SQL Server: Deborah :
-- [ ] [6/12] Where to host
-    - [ ] Heroku
-    - [ ] MySQL
-- [ ] [6/12] How to set up server / testing
-    - [ ] Input dataset and test basic queries
-- [ ] [6/13] Working Server
+- [x] [6/12] Where to host
+    - [x] AWS RDS
+- [x] [6/12] How to set up server / testing
+    - [x] Input dataset and test basic queries
+- [x] [6/13] Working Server
+- [ ] [6/16] MBA Overview
+    - [ ] [6/17] Incorporation of Insights
 
 ## Notes 
 <!-- Other important details discussed during the meeting can be entered here. -->

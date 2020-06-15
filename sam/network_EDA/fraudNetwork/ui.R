@@ -40,7 +40,7 @@ bootstrapPage(
                                                                  inline = TRUE),
                                                   multiple = TRUE),
                                       pickerInput("layout_select", h4("Graph Layout:"),
-                                                choices = c('sugiyama','stress','kk'), 
+                                                choices = c('sugiyama','stress','kk','drl'), 
                                                 selected = "stress",
                                                 options = list(`actions-box` = TRUE,
                                                                 inline = TRUE),

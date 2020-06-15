@@ -94,7 +94,7 @@ for (state in data$State %>% unique()) {
     colnames(btwn) = c('Provider','Betweenness')
     
     # Calculate Values of the First Eigenvector of the Graph Matrix
-    eign = eigen_centrality(bn.provider)
+    eign = eigen_centrality(bn.provider)$vector
     eign = tibble(names(eign), eign)
     colnames(eign) = c('Provider','Eigenvector')
     
@@ -113,7 +113,7 @@ for (state in data$State %>% unique()) {
 
 propatDeg <- dplyr::bind_rows(deglist)
 propatBtwn <- dplyr::bind_rows(btwnlist)
-propatEign <- dplyr::bind_rows(eignlist)
+propatEign <- dplyr::bind_rows(eigenlist)
 propatANN <- dplyr::bind_rows(annlist)
 
 #############################################################################
@@ -142,7 +142,7 @@ for (state in data$State %>% unique()) {
     colnames(btwn) = c('Provider','Betweenness')
     
     # Calculate Values of the First Eigenvector of the Graph Matrix
-    eign = eigen_centrality(bn.provider)
+    eign = eigen_centrality(bn.provider)$vector
     eign = tibble(names(eign), eign)
     colnames(eign) = c('Provider','Eigenvector')
     
@@ -162,7 +162,7 @@ for (state in data$State %>% unique()) {
 
 prodocDeg <- dplyr::bind_rows(deglist)
 prodocBtwn <- dplyr::bind_rows(btwnlist)
-prodocEign <- dplyr::bind_rows(eignlist)
+prodocEign <- dplyr::bind_rows(eigenlist)
 prodocANN <- dplyr::bind_rows(annlist)
 
 ```
@@ -178,7 +178,6 @@ prodocDeg_clean = prodocDeg %>% group_by(Provider) %>% summarise(docDegMax = max
 prodocBtwn_clean = prodocBtwn %>% group_by(Provider) %>% summarise(docBtwnMean = mean(Betweenness, na.rm=TRUE))
 prodocEign_clean = prodocEign %>% group_by(Provider) %>% summarise(docEignMean = mean(Eigenvector, na.rm=TRUE))
 prodocANN_clean = prodocANN %>% group_by(Provider) %>% summarise(docMANN = mean(Avg.NN, na.rm=TRUE))
-
 
 
 propatNet = propatDeg_clean %>% 
