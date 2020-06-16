@@ -237,6 +237,26 @@ def data_eng(data):
 
 	data['Age'] = round(((data['ClaimStartDt'] - data['DOB']).dt.days + 1)/365.25)
 
+	### Add TotalClaim Amt
+	data['TotalClaim'] = data['InscClaimAmtReimbursed'] + data['DeductibleAmtPaid']
+
+	### Add DailyCharges
+	data['DailyCharge'] = data['TotalClaim']/data['ClaimDays']
+
+	### Add Insurance Coverage Percentage
+	data['InscCovPercent'] = data['InscClaimAmtReimbursed']/(data['InscClaimAmtReimbursed']+data['DeductibleAmtPaid'])
+
+
+	### Find Duplicate Records
+	dup_features = ['BeneID','ClmDiagnosisCode_1', 'ClmDiagnosisCode_2','ClmDiagnosisCode_3']
+	idx = data.duplicated(subset=dup_features,keep=False) 
+	dup_outrecords = data.loc[idx,['ClaimID','TotalClaim']]
+
+	### Duplicate Record Flag
+	data['DupRecord'] = (data['ClaimID'].isin(dup_outrecords['ClaimID'])+0)
+
+
+
 	return data
 
 

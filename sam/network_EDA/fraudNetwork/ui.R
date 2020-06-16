@@ -9,6 +9,7 @@
 if(!require(shinyWidgets)) install.packages("shinyWidgets", repos = "http://cran.us.r-project.org")
 if(!require(shinydashboard)) install.packages("shinydashboard", repos = "http://cran.us.r-project.org")
 if(!require(shinythemes)) install.packages("shinythemes", repos = "http://cran.us.r-project.org")
+if(!require(patchwork)) install.packages("patchwork", repos = "http://cran.us.r-project.org")
 
 bootstrapPage(
   navbarPage(theme = "bootstrap.min.css",collapsible=TRUE, "Medical Fraud", id="nav",
@@ -44,7 +45,13 @@ bootstrapPage(
                                                 selected = "stress",
                                                 options = list(`actions-box` = TRUE,
                                                                 inline = TRUE),
-                                                multiple = FALSE)
+                                                multiple = FALSE),
+                                      h3("Legend"),
+                                      img(src = "patient.jpeg", height = 15, width = 15),
+                                      img(src = "doctor.png", height = 25, width = 23),
+                                      img(src = "test.jpg", height = 20, width = 20),
+                                      img(src = "nofraud.jpeg", height = 15, width = 15),
+                                      img(src = "fraud.png", height = 25, width = 25)
                         ),
                         plotOutput("plot", width="100%", height = "100%")
                       )

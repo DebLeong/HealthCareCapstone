@@ -40,11 +40,23 @@ shinyServer(function(input, output, session) {
         bn.actor1 = projection$proj1
         
         if (grepl('PRV',V(bn.actor1)$name[1], fixed=TRUE)){
-            plotActor(bn.actor1, "Provider Network" ,provider = TRUE)
+            plotActor(bn.actor1, 
+                      paste0("Provider Network: ",input$state_select,
+                             ', County: ',input$county_select),
+                      actor='provider',
+                      layout = 'tree')
         } else if (grepl('PHYS',V(bn.actor1)$name[1], fixed=TRUE)){
-            plotActor(bn.actor1, "Doctor Network",provider = FALSE)
+            plotActor(bn.actor1, 
+                      paste0("Doctor Network: ",input$state_select,
+                             ', County: ',input$county_select),
+                      actor='doctor',
+                      layout = 'tree')
         } else {
-            plotActor(bn.actor1, "Patient Network",provider = FALSE)
+            plotActor(bn.actor1, 
+                      paste0("Patient Network: ",input$state_select,
+                             ', County: ',input$county_select),
+                      actor='patient',
+                      layout = 'mds')
         }
     })
     
@@ -53,11 +65,23 @@ shinyServer(function(input, output, session) {
         bn.actor2 = projection$proj2
         
         if (grepl('PRV',V(bn.actor2)$name[1], fixed=TRUE)){
-            plotActor(bn.actor2, "Provider Network" ,provider = TRUE)
+            plotActor(bn.actor2, 
+                      paste0("Provider Network: ",input$state_select,
+                             ', County: ',input$county_select),
+                      actor='provider',
+                      layout = 'tree')
         } else if (grepl('PHYS',V(bn.actor2)$name[1], fixed=TRUE)){
-            plotActor(bn.actor2, "Doctor Network",provider = FALSE)
+            plotActor(bn.actor2, 
+                      paste0("Doctor Network: ",input$state_select,
+                             ', County: ',input$county_select),
+                      actor='doctor',
+                      layout = 'tree')
         } else {
-            plotActor(bn.actor2, "Patient Network",provider = FALSE)
+            plotActor(bn.actor2, 
+                      paste0("Patient Network: ",input$state_select,
+                             ', County: ',input$county_select),
+                      actor='patient',
+                      layout = 'mds')
         }
     })
     

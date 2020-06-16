@@ -33,8 +33,12 @@ def provData(data, target):
 		'NumProc': 'mean',
 		'NumDiag' : 'mean',
 		'NumChronics': 'mean',
-		'InscClaimAmtReimbursed' : 'mean',
-		'DeductibleAmtPaid' : 'mean',
+		#'InscClaimAmtReimbursed' : 'mean',
+		#'DeductibleAmtPaid' : 'mean',
+		'TotalClaim': 'mean',
+		'InscCovPercent': 'mean',
+		'DailyCharge': 'mean',
+		'DupRecord': 'sum',
 		'ClaimDays' : 'mean',
 		'WhetherDead': 'mean', # proportion of dead patients (might need to take negative log to get anything large)
 		'Alzheimer' : 'mean',
@@ -55,12 +59,15 @@ def provData(data, target):
 	#################################################################################
 	# Create ranges 
 	p_range = data.groupby(['Provider']).agg({
-		'Age' : rangeFunc,
+		#'Age' : rangeFunc,
 		'NumProc': rangeFunc,
-		'NumDiag' : rangeFunc,
-		'NumChronics': rangeFunc,
+		#'NumDiag' : rangeFunc,
+		#'NumChronics': rangeFunc,
 		'InscClaimAmtReimbursed' : rangeFunc,
-		'ClaimDays' : rangeFunc
+		'ClaimDays' : rangeFunc,
+		'TotalClaim' : rangeFunc,
+		'InscCovPercent' : rangeFunc,
+		'DailyCharge' : rangeFunc,
 		}).reset_index()
 
 	p_range.columns += '_Range'
@@ -82,18 +89,18 @@ def provData(data, target):
 
 	#################################################################################
 	# Number of Unique Doctors Associated With Provider
-	docs = data.melt(
-		id_vars = 'Provider', 
-		value_vars = ['AttendingPhysician','OperatingPhysician','OtherPhysician'], 
-		var_name='Type', 
-		value_name='Doctor').dropna(axis=0)
+	# docs = data.melt(
+	# 	id_vars = 'Provider', 
+	# 	value_vars = ['AttendingPhysician','OperatingPhysician','OtherPhysician'], 
+	# 	var_name='Type', 
+	# 	value_name='Doctor').dropna(axis=0)
 
-	docs = docs[['Provider','Doctor']].drop_duplicates()
+	# docs = docs[['Provider','Doctor']].drop_duplicates()
 
-	p['Doctors'] = docs.groupby('Provider')['Doctor'].count().values
-
-	p = pd.merge(p, target, on = ['Provider'], how = 'left')
+	# p['Doctors'] = docs.groupby('Provider')['Doctor'].count().values
 	#################################################################################
+	p = pd.merge(p, target, on = ['Provider'], how = 'left')
+
 
 	######
 	# Rename columns. Be careful if you add a feature make sure to put the new name in the right place!

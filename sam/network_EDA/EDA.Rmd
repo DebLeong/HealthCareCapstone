@@ -25,18 +25,10 @@ User can also specify the way to layout the diagram. Usually 'stress' is the bes
 User can also look at all counties within a given state by setting county = 'all'.
 Though for large states or patdoc networks this is not recommended since it takes a long time to plot and graphs are not that informative. 
 
-```{r}
-source("analNet.R")
-state = 'Oklahoma'
-county = c(100,200)
-netAnal(data, state, county, type='propat', layout = 'stress')
-netAnal(data, state, county, type='prodoc', layout = 'kk')
-netAnal(data, state, county, type='patdoc', layout = 'stress')
-```
 
 ```{r}
 source("getNet.R")
-source("plotNet.R")
+
 
 
 bnet = propat(data, c('Oklahoma'), 100)
@@ -54,21 +46,6 @@ par(op)
 ```
 
 ```{r}
-
-# mean_path_length = function(net){
-#   paths = data.frame(distances(net, v=V(net), 
-#                                to = V(net)))
-#   isolated = which(degree(net)==0)
-#   if (length(isolated)==0){
-#     paths_mean = rowSums(paths)/length(paths)
-#   } else {
-#     paths_rowdel = paths[-isolated,]
-#     paths_coldel = paths_rowdel[,-isolated]
-#     paths_mean = rowSums(paths_coldel)/length(paths_coldel)
-#   }
-#   return(paths_mean)
-# 
-# }
 
 deglist = list()
 annlist = list()
@@ -196,7 +173,8 @@ write_csv(propatNet,'../../propatNet.csv')
 ```
 
 ```{r}
-bnet = prodoc(data, c('California'), 'all')
+source('getNet.R')
+bnet = prodoc(data, c('Alaska'), 'all')
 bn.pr = bipartite.projection(bnet)
 bn.provider <- bn.pr$proj2
 
@@ -307,8 +285,66 @@ ggraph(bnet, layout ='stress')+
 ```
 
 ```{r}
+bnet = propat(data, c('Rhode Island'), 'all')
+bn.pr = bipartite.projection(bnet)
 
+bn.patient <- bn.pr$proj1
+bn.provider <- bn.pr$proj2
 
+ggraph(bnet, layout ='stress')+
+    geom_edge_link0(alpha=0.5, edge_colour = "grey66", aes(width = weights)) + 
+    #geom_node_point(aes(color = fraud, size = size), shape = V(bnet)$shape) +
+    geom_node_point(aes(
+      #fitler = size >= 10,
+      color = fraud,
+      size = size), shape = V(bnet)$shape) +
+    geom_node_text(aes(filter = size >= 50, label = name, size=3),family="serif", repel=TRUE)+
+    scale_color_brewer(palette = "Dark2")+
+    scale_edge_width_continuous(range = c(0.2,3), guide=FALSE)+
+    scale_fill_manual(values = palette) +
+    scale_size_continuous(range = c(1,5), guide=FALSE)+
+    theme_graph() +
+    theme(legend.position = "bottom")
+
+ggraph(bn.patient, layout ='stress')+
+    geom_edge_link0(alpha=0.5, edge_colour = "grey66") + 
+    #geom_node_point(aes(color = fraud, size = size), shape = V(bnet)$shape) +
+    geom_node_point(aes(
+      #fitler = size >= 10,
+      #color = fraud,
+      size = size)) +
+    geom_node_text(aes(filter = size >= 50, label = name, size=3),family="serif", repel=TRUE)+
+    scale_color_brewer(palette = "Dark2")+
+    scale_edge_width_continuous(range = c(0.2,3), guide=FALSE)+
+    scale_fill_manual(values = palette) +
+    scale_size_continuous(range = c(1,5), guide=FALSE)+
+    theme_graph() +
+    theme(legend.position = "bottom")
+
+ggraph(line.graph(bn.patient), layout ='sugiyama')+
+    geom_edge_link0(alpha=0.5, edge_colour = "grey66") + 
+    #geom_node_point(aes(color = fraud, size = size), shape = V(bnet)$shape) +
+    geom_node_point() +
+    scale_color_brewer(palette = "Dark2")+
+    scale_edge_width_continuous(range = c(0.2,3), guide=FALSE)+
+    scale_fill_manual(values = palette) +
+    #scale_size_continuous(range = c(1,5), guide=FALSE)+
+    theme_graph() +
+    theme(legend.position = "bottom")
+
+ggraph(bn.provider, layout ='sugiyama')+
+    geom_edge_link0(alpha=0.5, edge_colour = "grey66") + 
+    #geom_node_point(aes(color = fraud, size = size), shape = V(bnet)$shape) +
+    geom_node_point(aes(
+      #fitler = size >= 10,
+      color = fraud,
+      size = size)) +
+    scale_color_brewer(palette = "Dark2")+
+    scale_edge_width_continuous(range = c(0.2,3), guide=FALSE)+
+    scale_fill_manual(values = palette) +
+    scale_size_continuous(range = c(1,5), guide=FALSE)+
+    theme_graph() +
+    theme(legend.position = "bottom")
 
 
 ```
@@ -371,54 +407,6 @@ df.prom <- data.frame(
 ```
 
 
-```{r}
-h2 <- subgraph.edges(h1, 
-                     E(h1)[inc(V(h1)[name %in% c("The Wolf of Wall Street", 
-                                                     "Gangs of New York",
-                                                     "The Departed")])]) 
-plot(h2, layout = layout_with_kk)
-```
-```{r}
-
-
-print('Degree Distribution of Patients')
-print(table(degree(binet,v=V(binet)[type==FALSE])))
-
-print('Degree Distribution of Providers')
-print(table(degree(binet,v=V(binet)[type==TRUE])))
-
-print('Mean Degree of Patients')
-print(mean(degree(binet,v=V(binet)[type==FALSE])))
-
-print('Mean Degree of Providers')
-print(mean(degree(binet,v=V(binet)[type==TRUE])))
-```
-```{r}
-V(binet)$deg = degree(binet)
-V(binet)[type==FALSE & deg > 4]$name
-```
-
-```{r}
-busy_patients <- data.frame(cbind(Patient = V(binet)[type==FALSE & deg > 4]$name, 
-                               Provider = V(binet)[type==FALSE & deg > 4]$deg
-))
-busy_patients
-```
-```{r}
-beneP %>% 
-  select(Provider,BeneID) %>% 
-  group_by(BeneID) %>% 
-  tally() %>% 
-  filter(n > 4) %>% 
-  arrange(desc(n))
-
-bene = beneP %>% 
-  select(Provider,BeneID) %>% 
-  group_by(BeneID) %>% 
-  tally()
-mean(bene$n)
-```
-
 
 ## Great example of how a new metric can be created... though maybe this can also be done easliy with dataframe groupings.. 
 ```{r}
@@ -474,129 +462,6 @@ h1.act
 ```
 
 
-
-
-
-
-```{r}
-per_route = data_pdc_5 %>%
-  group_by(Doctor) %>%
-  summarise(weight = sum(n)) %>%
-  arrange(desc(weight)) %>%
-  ungroup() %>%
-  rowid_to_column()
-per_route
-```
-
-```{r}
-
-#by(data_pdc_5, data_pdc_5$Provider, function(x) t(combn(as.vector(x$Doctor), 2)))
-adjacency_mat = data_pdc_5 %>%
-  select(Provider, Doctor, n) %>% 
-  spread(Doctor, n, fill=0) %>% 
-  tibble::column_to_rownames("Provider")
-
-
-# edges = per_route %>%
-#   left_join(nodes, by=c('Doc1' = 'label')) %>%
-#   rename(from=id)
-# 
-# edges = edges %>% 
-#   left_join(nodes, by = c("Doc2" = 'label')) %>% 
-#   rename(to = id)
-# 
-# edges = select(edges,from, to, weight)
-# 
-# 
-# docNet <- network(edges, vertex.attr = nodes, 
-#                           matrix.type = "edgelist", ignore.eval = FALSE)
-```
-
-```{r}
-adjacency_mat %>% head() %>% sum()
-```
-```{r}
-net1 <- network(adjacency_mat,matrix.type="adjacency") 
-```
-
-```{r}
-library(igraph)
-adjm1<-matrix(sample(0:1,1000,replace=TRUE,prob=c(0.9,01)),nc=10) 
-g1<-graph.adjacency(adjm1)
-x11()
-plot(g1)
-```
-
-```{r}
-generate_Network = function(docs){
-  source = docs %>% 
-    distinct(Doc1) %>% 
-    rename(label = Doc1) %>% mutate(type = "Attending")
-  
-  destination = docs %>% 
-    distinct(Doc2,Connection) %>% 
-    mutate(type = ifelse(Connection=='OperatingPhysician','Operating','Other')) %>% 
-    rename(label = Doc2) %>% 
-    select(label,type)
-  
-  nodes = full_join(source,destination, by=c('label','type')) %>% rowid_to_column("id") %>% drop_na()
-  
-  per_route = docs %>% 
-    group_by(Doc1,Doc2) %>% 
-    summarise(weight = sum(ClaimsFiled)) %>% 
-    ungroup() %>% rowid_to_column()
-  
-  edges = per_route %>% 
-    left_join(nodes, by=c('Doc1' = 'label')) %>% 
-    rename(from=id)
-  
-  edges = edges %>% 
-    left_join(nodes, by = c("Doc2" = 'label')) %>% 
-    rename(to = id)
-  
-  edges = select(edges,from, to, weight)
-
-  
-  docNet <- network(edges, vertex.attr = nodes, 
-                            matrix.type = "edgelist", ignore.eval = FALSE)
-
-}
-```
-
-```{r}
-data = filter(docs, State == 23)# %>% select(-X1)
-data = data[complete.cases(data),]
-generate_Network(data)
-```
-
-```{r}
-edges
-```
-
-```{r}
-library('network')
-
-doc_net <- network(edges,  vertex.attr=nodes, matrix.type="edgelist", 
-                loops=F, multiple=F, ignore.eval = F)
-
-#detach('package:network')
-library(ggraph)
-library(igraph)
-
-ggraph(doc_net) +
-  geom_edge_fan(color="gray50", width=0.8, alpha=0.5) + 
-  geom_node_point() +
-  theme_bw() # add nodes to the plot
-
-```
-```{r}
-ggraph(doc_net) +
-  geom_edge_arc(color="gray", curvature=0.3, aes(size=weight)) +            
-  geom_node_point(color="orange") +     
-  geom_node_text(aes(label = label), size=2, color="black", repel=T) +
-  theme_void()
-```
-
 ```{r}
 par(mar=c(0,0,0,0))
 
@@ -615,78 +480,6 @@ render.d3movie(doc_net, usearrows = F, displaylabels = F, bg="#111111",
 ```
 
 
-
-```{r}
-save(nodes, file = "nodes.RData")
-save(edges, file = "edges.RData")
-```
-
-
-```{r}
-library(network)
-
-routes_network <- network(edges, vertex.attr = nodes, 
-                          matrix.type = "edgelist", ignore.eval = FALSE)
-```
-```{r}
-plot(routes_network, vertex.cex = 3)
-plot(routes_network, vertex.cex = 3, mode = "circle")
-
-```
-```{r}
-detach(package:network)
-rm(routes_network)
-library(igraph)
-```
-
-```{r}
-routes_igraph <- graph_from_data_frame(d = edges, vertices = nodes, directed = TRUE)
-```
-```{r}
-plot(routes_igraph, edge.arrow.size = 0.2)
-plot(routes_igraph, layout = layout_with_graphopt, edge.arrow.size = 0.2)
-```
-
-```{r}
-library(tidygraph)
-library(ggraph)
-```
-```{r}
-routes_tidy <- tbl_graph(nodes = nodes, edges = edges, directed = TRUE)
-```
-
-```{r}
-routes_tidy
-```
-
-```{r}
-routes_tidy %>% 
-  activate(edges) %>% 
-  arrange(desc(weight))
-```
-```{r}
-ggraph(routes_tidy, layout = 'graphopt') + 
-  geom_node_point() + 
-  geom_edge_link(aes(width=weight), alpha=0.8) +
-  scale_edge_width(range=c(0.1,2)) +
-  geom_node_text(aes(label=label), repel=TRUE) +
-  labs(edge_width = "Letters") +
-  theme_graph()
-
-ggraph(routes_igraph, layout = "linear") + 
-  geom_edge_arc(aes(width = weight), alpha = 0.8) + 
-  scale_edge_width(range = c(0.2, 2)) +
-  geom_node_text(aes(label = label)) +
-  labs(edge_width = "Letters") +
-  theme_graph()
-
-```
-```{r}
-library(visNetwork)
-library(networkD3)
-
-visNetwork(nodes,edges)
-```
 
 ```{r}
 edges = mutate(edges, width = weight/5 + 1)
@@ -719,27 +512,176 @@ class(net1)
 ```
 
 ```{r}
-gplot(net1, vertex.col=2, displaylabels=TRUE)
+prpat = function(data, state, county){
+  if(county == 'all'){
+    data.filt = 
+      data %>% filter(State %in% state)
+  } else {
+    data.filt = 
+      data %>% filter(State %in% state, County %in% county)
+  }
+  data.filt = 
+    data.filt %>% 
+    filter(State %in% state, County %in% county) %>% 
+    dplyr::select(Provider, PotentialFraud, BeneID, Status, InscClaimAmtReimbursed) %>%
+    group_by(Provider, PotentialFraud, BeneID, Status) %>% 
+    summarise(weights = sum(InscClaimAmtReimbursed)) %>% data.frame()
+  
+  ## Get Provider | Beneficiary
+  connections = data.filt %>% dplyr::select(Provider,BeneID,weights)
+  ## Create bipartite graph
+  Bnet <- graph.data.frame(connections,directed=FALSE)
+  ## Add attribues
+  shapes <- c(21,15)
+  fraud = data.filt %>% select(Provider,PotentialFraud)
+  V(Bnet)$type <- V(Bnet)$name %in% connections[,1]
+  V(Bnet)$actor <- ifelse(V(Bnet)$name %in% connections[,1],'Provider','Patient')
+  V(Bnet)$fraud <- ifelse(V(Bnet)$name %in% fraud[,1],fraud[,2],'Patient')
+  #V(Bnet)$fraud <- factor(V(Bnet)$fraud, levels = c('Yes','?','No','Patient'))
+  V(Bnet)$size <- 4*sqrt(strength(Bnet))
+  V(Bnet)$shape <- shapes[V(Bnet)$type+1]
+  
+  FraudYes = V(Bnet)[fraud=='Yes']
+  FraudNo = V(Bnet)[fraud=='No']
+  FraudTest = V(Bnet)[fraud=='?']
+  Patients = V(Bnet)[fraud=='Patient']
+   
+  V(Bnet)[fraud=='Yes']$color = "#e65247" # red
+  V(Bnet)[fraud=='No']$color = "#57bf37" #green
+  V(Bnet)[fraud=='?']$color = "#b24ed4" #purple
+  V(Bnet)[fraud=='Patient']$color = "#3b68ff" #blue
+  
+  E(Bnet)[FraudYes %--% Patients]$color = "#e65247" # red
+  E(Bnet)[FraudNo %--% Patients]$color = "#57bf37" #green
+  E(Bnet)[FraudTest %--% Patients]$color = "#b24ed4" #purple
+  
+  
+  
+  # Create 4 new features for connectivity of providers based on bipartite projection graphs based on 
+  # doctor and patient networks
+  return(Bnet)
+}
+# palette = c(green "#009E73",purple "#CC79A7",blue: "#0072B2", red:"#D55E00")
+
+plotProPat = function(bnet, state, county, layout){
+  
+  ggraph(bnet, layout = layout)+
+    geom_edge_link0(
+      edge_alpha=0.3, 
+      edge_color = E(bnet)$color, 
+      aes(edge_width = weights)) + 
+    geom_node_point(
+      aes(size = size), 
+      shape = V(bnet)$shape, 
+      color = V(bnet)$color) +
+    geom_node_text(aes(filter = size >= 100, label = name, size=3),family="serif", repel=TRUE)+
+    scale_edge_width_continuous(range = c(0.2,4), guide=FALSE)+
+    scale_size_continuous(range = c(2,6), guide=FALSE)+
+    theme_graph()
+}
+
+plotActor = function(net, title, layout = 'kk', actor = 'provider'){
+
+  if (actor=='provider') {
+    shape = 15
+  } else if (actor == 'patient') {
+    shape = 21
+  } else if (actor == 'doctor') {
+    shape = 17
+  }
+  
+  
+  ggraph(net, layout = layout)+
+    geom_edge_link0(edge_alpha=0.5, edge_colour = "grey66") + 
+    geom_node_point(
+    aes(size = size),
+    color = V(net)$color,
+    shape = shape) + 
+    scale_edge_width_continuous(range = c(0.2,3), guide=FALSE)+
+    scale_size_continuous(range = c(2,6), guide=FALSE) +
+    theme_graph() +
+    ggtitle(title)
+}
+
 ```
 
 ```{r}
-data = read_csv('./data/combinedData.csv')
-#target = read_csv('./data/combinedTarget.csv')
+bnet = prpat(data, c('New York'), 'all')
+bn.pr = bipartite.projection(bnet, remove.type = FALSE)
+
+bn.patient <- bn.pr$proj1
+bn.provider <- bn.pr$proj2
+
+plotProPat(bnet, 'Oklahoma',100,'stress')
+plot1 = plotActor(bn.patient, 'Patient', layout = 'circlepack', actor='patient')
+plot2 = plotActor(bn.provider, 'Provider', layout = 'stress', actor='provider')
+plot1 + plot2
+plotActor(bn.provider, 'title', layout = 'tree', actor='doctor')
+```
+```{r}
+ggraph(bn.provider, 'matrix', sort.by = node_rank_spectral()) + 
+  geom_edge_point(mirror = TRUE) + 
+  coord_fixed()
 ```
 
-```{r}
-library(Hmisc)
-library(psych)
-data_summary = data %>% select_if(is.numeric) %>% psych::describe()
-```
 
 ```{r}
-data_summary %>% mutate(n = abs(n-693603))
+
+prodoc = function(data, state, county){
+  if(county == 'all'){
+    county = data %>% 
+      filter(State %in% state) %>% 
+      distinct(County) %>% pull
+  }
+  data.filt = 
+    data %>% filter(State %in% state, County %in% county) %>% 
+    dplyr::select(Provider, PotentialFraud, ClaimID, 
+                  AttendingPhysician, OperatingPhysician, OtherPhysician) %>% 
+    pivot_longer(cols=c(AttendingPhysician,OperatingPhysician,OtherPhysician), 
+                 names_to = "Type", values_to = "Doctor") %>%
+    filter(complete.cases(.)) %>% 
+    group_by(Provider, PotentialFraud, Doctor) %>% 
+    tally() %>% rename('weights' = 'n') %>% data.frame()
+  
+  ## Get Provider | Beneficiary
+  connections = data.filt %>% dplyr::select(Provider,Doctor,weights)
+  ## Create bipartite graph
+  Bnet <- graph.data.frame(connections,directed=FALSE)
+  ## Add attributes
+  shapes <- c(25,15)
+  fraud = data.filt %>% select(Provider,PotentialFraud)
+  V(Bnet)$type <- V(Bnet)$name %in% connections[,1]
+  V(Bnet)$actor <- ifelse(V(Bnet)$name %in% connections[,1],'Provider','Doctor')
+  V(Bnet)$fraud <- ifelse(V(Bnet)$name %in% fraud[,1],fraud[,2],'Doctor')
+  #V(Bnet)$fraud <- factor(V(Bnet)$fraud, levels =c('Yes','?','No','Doctor'))
+  V(Bnet)$size <- 4*sqrt(strength(Bnet))
+  
+  V(Bnet)$shape <- shapes[V(Bnet)$type+1]
+  # Create 4 new features for connectivity of providers based on bipartite projection graphs based on 
+  # doctor and patient networks
+  return(Bnet)
+}
+
+plotProDoc = function(bnet, state, county, layout){
+  
+  ggraph(bnet, layout = layout)+
+    geom_edge_link0(alpha=0.5, edge_colour = "grey66", aes(width = weights)) + 
+    geom_node_point(aes(
+      #fitler = size >= 10,
+      color = fraud,
+      size = size), shape = V(bnet)$shape) +
+    geom_node_text(aes(filter = size >= 50, label = name, size=3),family="serif", repel=TRUE)+
+    scale_color_brewer(palette = "Set1",
+                       #labels=c('Yes','?','No','Doctor'),
+                       name = "Fraud") +
+    scale_edge_width_continuous(range = c(0.2,3), guide=FALSE)+
+    scale_fill_manual(values = palette) +
+    scale_size_continuous(range = c(2,6), guide=FALSE)+
+    theme_graph() + theme(legend.position = "left")
+}
 ```
-```{r}
-library(statnet)
-as.matrix(net1, matrix.type='edgelist')
-```
+
+
 
 ```{r}
 set.vertex.attribute(net1, "gender", c("F","F","M","F","M"))
@@ -752,5 +694,11 @@ set.edge.attribute(net1, "rndval", runif(network.size(net1),0,1))
 
 netval1 <- rbind(c(0,2,3,0,0), c(0,0,3,1,0), c(0,1,0,0,0), c(0,0,0,0,0), c(0,0,2,0,0))
 netval1 <- network(netval1,matrix.type="adjacency", ignore.eval=FALSE,names.eval="like")
+```
+```{r}
+data %>% filter(State %in% 'Oklahoma', County %in% 100) %>% 
+    dplyr::select(Provider, PotentialFraud, BeneID, InscClaimAmtReimbursed) %>% 
+    group_by(Provider, PotentialFraud, BeneID) %>% 
+    summarise(weights = sum(InscClaimAmtReimbursed)) %>% data.frame()
 ```
 
