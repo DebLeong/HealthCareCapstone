@@ -2,6 +2,7 @@ library(shiny)
 library(tidyverse)
 if(!require(igraph)) install.packages("igraph", repos = "http://cran.us.r-project.org")
 if(!require(ggraph)) install.packages("ggraph", repos = "http://cran.us.r-project.org")
+if(!require(DT)) install.packages("DT", repos = "http://cran.us.r-project.org")
 
 
 
@@ -11,6 +12,7 @@ if(!require(ggraph)) install.packages("ggraph", repos = "http://cran.us.r-projec
 
 docs = read_csv('../../data/combinedData.csv');
 target = read_csv('../../data/combinedTarget.csv');
+claimTrack = read_csv('../../data/claimTrack.csv');
 
 data = docs %>% 
   left_join(target, by=c('Provider','Set')) %>% 
@@ -30,13 +32,13 @@ states = sort(c("Pennsylvania", "Alabama", "Texas", "New Jersey",
            "Wyoming", "Vermont", "Hawaii", "Delaware"))
 
 ################################################################################################
-propat = function(data, state, county){
+propat = function(data, state, county, status){
   if(county == 'all'){
     data.filt = 
-      data %>% filter(State %in% state)
+      data %>% filter(State %in% state, Status %in% status)
   } else {
     data.filt = 
-      data %>% filter(State %in% state, County %in% county)
+      data %>% filter(State %in% state, Status %in% status, County %in% county)
   }
   data.filt = 
     data.filt %>% 
@@ -47,7 +49,7 @@ propat = function(data, state, county){
   ## Get Provider | Beneficiary
   connections = data.filt %>% dplyr::select(Provider,BeneID,WhetherDead,weights)
   ## Create bipartite graph
-  Bnet <- graph.data.frame(connections,directed=FALSE)
+  Bnet <- graph_from_data_frame(connections,directed=FALSE)
   ## Add attribues
   shapes <- c(21,15)
   fraud = data.filt %>% select(Provider,PotentialFraud)
@@ -75,13 +77,13 @@ propat = function(data, state, county){
 }
 
 ################################################################################################
-prodoc = function(data, state, county){
+prodoc = function(data, state, county, status){
   if(county == 'all'){
     data.filt = 
-      data %>% filter(State %in% state)
+      data %>% filter(State %in% state, Status %in% status)
   } else {
     data.filt = 
-      data %>% filter(State %in% state, County %in% county)
+      data %>% filter(State %in% state, Status %in% status, County %in% county)
   }
   data.filt = 
     data.filt %>% 
@@ -96,7 +98,7 @@ prodoc = function(data, state, county){
   ## Get Provider | Beneficiary
   connections = data.filt %>% dplyr::select(Provider,Doctor,weights)
   ## Create bipartite graph
-  Bnet <- graph.data.frame(connections,directed=FALSE)
+  Bnet <- graph_from_data_frame(connections,directed=FALSE)
   ## Add attributes
   shapes <- c(25,15)
   fraud = data.filt %>% select(Provider,PotentialFraud)
@@ -124,13 +126,13 @@ prodoc = function(data, state, county){
 }
 
 ################################################################################################
-patdoc = function(data, state, county){
+patdoc = function(data, state, county,status){
   if(county == 'all'){
     data.filt = 
-      data %>% filter(State %in% state)
+      data %>% filter(State %in% state, Status %in% status)
   } else {
     data.filt = 
-      data %>% filter(State %in% state, County %in% county)
+      data %>% filter(State %in% state, Status %in% status, County %in% county)
   }
   data.filt = 
     data.filt %>% 
@@ -145,7 +147,7 @@ patdoc = function(data, state, county){
   ## Get Provider | Beneficiary
   connections = data.filt %>% dplyr::select(BeneID,Doctor,weights)
   ## Create bipartite graph
-  Bnet <- graph.data.frame(connections,directed=FALSE)
+  Bnet <- graph_from_data_frame(connections,directed=FALSE)
   ## Add attributes
   shapes <- c(25,21)
   V(Bnet)$type <- V(Bnet)$name %in% connections[,1]
@@ -161,7 +163,45 @@ patdoc = function(data, state, county){
 }
 
 ################################################################################################
+### Duplication Network
+target = target %>% distinct(Provider,PotentialFraud) %>% data.frame()
+edges = claimTrack %>% 
+  #filter(State_S %in% state, State_R %in% c('New York')) %>% 
+  select(Sender,Receiver)
+Dnet = edges %>% graph_from_data_frame(directed = TRUE)
+Dnet = simplify(Dnet)
+#V(Dnet)$type <- ifelse(V(Dnet)$name %in% edges[,1],'Sender','Receiver')
+
+V(Dnet)$size <- sqrt(strength(Dnet))
+
+V(Dnet)$fraud = ifelse(V(Dnet)$name %in% target[,1],target[,2],'?')
+
+
+V(Dnet)[fraud=='Yes']$color = "#e65247" # red
+V(Dnet)[fraud=='No']$color = "#57bf37" #green
+V(Dnet)[fraud=='?']$color = "#b24ed4" #purple
+
+
 ################################################################################################
+################################################################################################
+
+plotDnet = function(dnet, layout = 'stress'){
+  ggraph(dnet, layout = layout)+
+    geom_edge_fan0(arrow = arrow(angle = 30, 
+                                  length = unit(0.06, "inches"),
+                                  ends = "last", type = "closed"),
+                    alpha=0.3) +
+    geom_node_point(
+      aes(size = size, color = color),
+      shape = 20,
+      alpha=0.5,
+      color = V(dnet)$color
+      ) +
+    geom_node_text(aes(filter = size >= 5, label = name, size=5),family="serif", repel=TRUE)+
+    scale_edge_width_continuous(range = c(0.5,5), guide=FALSE)+
+    scale_size_continuous(range = c(2,7), guide=FALSE)+
+    theme_graph()
+}
 
 plotProPat = function(bnet, state, county, layout){
   
@@ -174,7 +214,7 @@ plotProPat = function(bnet, state, county, layout){
       aes(size = size), 
       shape = V(bnet)$shape, 
       color = V(bnet)$color) +
-    geom_node_text(aes(filter = size >= 100, label = name, size=3),family="serif", repel=TRUE)+
+    #geom_node_text(aes(filter = size >= 100, label = name, size=3),family="serif", repel=TRUE)+
     scale_edge_width_continuous(range = c(0.2,4), guide=FALSE)+
     scale_size_continuous(range = c(2,6), guide=FALSE)+
     theme_graph()
@@ -192,7 +232,7 @@ plotProDoc = function(bnet, state, county, layout){
       aes(size = size), 
       shape = V(bnet)$shape, 
       color = V(bnet)$color) +
-    geom_node_text(aes(filter = size >= 100, label = name, size=3),family="serif", repel=TRUE)+
+    #geom_node_text(aes(filter = size >= 100, label = name, size=3),family="serif", repel=TRUE)+
     scale_edge_width_continuous(range = c(0.2,4), guide=FALSE)+
     scale_size_continuous(range = c(2,6), guide=FALSE)+
     theme_graph()
@@ -210,11 +250,10 @@ plotPatDoc = function(bnet, state, county, layout){
       aes(size = size), 
       shape = V(bnet)$shape, 
       color = V(bnet)$color) +
-    geom_node_text(aes(filter = size >= 100, label = name, size=3),family="serif", repel=TRUE)+
+    #geom_node_text(aes(filter = size >= 100, label = name, size=3),family="serif", repel=TRUE)+
     scale_edge_width_continuous(range = c(0.2,4), guide=FALSE)+
     scale_size_continuous(range = c(2,6), guide=FALSE)+
-    theme_graph() +
-    ggtitle(paste0('Patient-Doctor Network for\n',state,', County: ',county))
+    theme_graph()
 }
 
 ################################################################################################

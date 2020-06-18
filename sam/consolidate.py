@@ -94,6 +94,7 @@ def consolidate():
 	outpat_test['Set'] = 'Test'
 	target_test['Set'] = 'Test'
 
+
 	#################################################################################
 	# Add flags for identifying train or test dat
 
@@ -229,15 +230,14 @@ def data_eng(data):
 
 	data['DOB'] = pd.to_datetime(data['DOB'] , format = '%Y-%m-%d')
 	data['DOD'] = pd.to_datetime(data['DOD'],format = '%Y-%m-%d')
-
 	### Number of hospitalization days
 	data['AdmissionDays'] = ((data['DischargeDt'] - data['AdmissionDt']).dt.days) + 1
 	### Number of claim days 
 	data['ClaimDays'] = ((data['ClaimEndDt'] - data['ClaimStartDt']).dt.days) + 1
-
 	data['Age'] = round(((data['ClaimStartDt'] - data['DOB']).dt.days + 1)/365.25)
 
 	### Add TotalClaim Amt
+	data['DeductibleAmtPaid'] = data['DeductibleAmtPaid'].fillna(0)
 	data['TotalClaim'] = data['InscClaimAmtReimbursed'] + data['DeductibleAmtPaid']
 
 	### Add DailyCharges
@@ -254,29 +254,20 @@ def data_eng(data):
 
 	### Duplicate Record Flag
 	data['DupRecord'] = (data['ClaimID'].isin(dup_outrecords['ClaimID'])+0)
-
-
-
 	return data
-
 
 def make_fake_names(data, columns = ['AttendingPhysician','OperatingPhysician','OtherPhysician']):
 	from faker import Faker
-	
 	#################################################################################
 	# Clean features
-
 	data[columns] = data[columns].fillna('')
 	data[columns] = data[columns].apply(lambda x: x.str.strip())
-
 	#################################################################################
 	# Clean features
 	ids = np.unique(data[columns].values.flatten())
-
 	#################################################################################
 	# Create random names
 	random.seed(1) # don't change - ensures reproducibility
-
 	fake = Faker(['en_CA', 'de_DE', 'en_US','es_MX'])
 	a = set()
 	L=0
@@ -287,16 +278,11 @@ def make_fake_names(data, columns = ['AttendingPhysician','OperatingPhysician','
 	    L = len(a)
 	    
 	names = np.array(list(a))
-
 	id_lookup = pd.DataFrame({'Names': names}, index = ids)
-
 	id_lookup.loc[''][0] = ''
-
 	for col in columns:
 		data[col] = data[col].apply(lambda x: id_lookup.loc[x][0])
-
 	id_lookup.to_csv('./data/doc_lookup.csv')
-
 	return data
 
 

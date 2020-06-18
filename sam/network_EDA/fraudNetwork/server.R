@@ -13,12 +13,13 @@ shinyServer(function(input, output, session) {
     
     net = reactive({
         type = input$network_type_select
+        
         if (type == 'Provider-Patient'){
-            propat(data, input$state_select, input$county_select)
+            propat(data, input$state_select, input$county_select, input$status_select)
         } else if (type == 'Provider-Doctor') {
-            prodoc(data, input$state_select, input$county_select)
+            prodoc(data, input$state_select, input$county_select, input$status_select)
         } else if (type == 'Patient-Doctor') {
-            patdoc(data, input$state_select, input$county_select)
+            patdoc(data, input$state_select, input$county_select, input$status_select)
         } 
     })
     
@@ -85,6 +86,12 @@ shinyServer(function(input, output, session) {
         }
     })
     
+    
+    output$duplicates_plot = renderPlot({
+        #type = input$dnet_type_select
+        plotDnet(Dnet, layout = input$dup_layout_select)
+    })
+    
     observeEvent(input$state_select, {
         choices =
             data %>%
@@ -94,6 +101,18 @@ shinyServer(function(input, output, session) {
         updatePickerInput(session = session, inputId = 'county_select', 
                           choices = sort(choices[[1]]), selected = 0)
     })
+    
+    output$table <- DT::renderDataTable({
+        df = claimTrack %>% select(-c(ClaimMultiplier,TotalClaim_S,
+                                      ClaimDays_S,State_S,State_R,
+                                      ClaimDays_R,DiffLengthOfStay,
+                                      SimolClaim,Status_R,Status_S))
+        DT::datatable(df, escape = FALSE)
+    },
+    options = list(
+        autoWidth = TRUE,
+        columnDefs = list(list(targets = "_all")))
+    )
 
 
 
