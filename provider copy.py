@@ -27,14 +27,18 @@ def provData(data, target):
 		'BeneID':'nunique',
 		'ClaimID' : 'count',
 		'State' : 'nunique',
-		'AttendingPhysician': 'nunique',
+		# 'AttendingPhysician': 'nunique',
 		'OperatingPhysician': 'nunique',
 		'OtherPhysician': 'nunique',
 		'NumProc': 'mean',
 		'NumDiag' : 'mean',
 		'NumChronics': 'mean',
-		'InscClaimAmtReimbursed' : 'mean',
-		'DeductibleAmtPaid' : 'mean',
+		#'InscClaimAmtReimbursed' : 'mean',
+		#'DeductibleAmtPaid' : 'mean',
+		'TotalClaim': 'mean',
+		'InscCovPercent': 'mean',
+		'DailyCharge': 'mean',
+		'DupRecord': 'sum',
 		'ClaimDays' : 'mean',
 		'WhetherDead': 'mean', # proportion of dead patients (might need to take negative log to get anything large)
 		'Alzheimer' : 'mean',
@@ -50,17 +54,20 @@ def provData(data, target):
 	     'Stroke': 'mean'
 		}).reset_index()
 
-	p['logClaim'] = np.log(p['ClaimID'])
-	p['logBene'] = np.log(p['BeneID'])
+	# p['logClaim'] = np.log(p['ClaimID'])
+	# p['logBene'] = np.log(p['BeneID'])
 	#################################################################################
 	# Create ranges 
 	p_range = data.groupby(['Provider']).agg({
-		'Age' : rangeFunc,
+		#'Age' : rangeFunc,
 		'NumProc': rangeFunc,
-		'NumDiag' : rangeFunc,
-		'NumChronics': rangeFunc,
+		#'NumDiag' : rangeFunc,
+		#'NumChronics': rangeFunc,
 		'InscClaimAmtReimbursed' : rangeFunc,
-		'ClaimDays' : rangeFunc
+		'ClaimDays' : rangeFunc,
+		'TotalClaim' : rangeFunc,
+		'InscCovPercent' : rangeFunc,
+		'DailyCharge' : rangeFunc,
 		}).reset_index()
 
 	p_range.columns += '_Range'
@@ -68,45 +75,47 @@ def provData(data, target):
 	
 	#################################################################################
 	## Number of Unique Inpatients and Outpatients
-	d = data.groupby(['Provider','Status']).agg({
-		'ClaimID': 'count',
-		'BeneID' : 'nunique'}).reset_index().pivot_table(
-		values=['ClaimID','BeneID'], 
-		index = 'Provider', 
-		columns='Status').fillna(0)
+	# d = data.groupby(['Provider','Status']).agg({
+	# 	'ClaimID': 'count',
+	# 	'BeneID' : 'nunique'}).reset_index().pivot_table(
+	# 	values=['ClaimID','BeneID'], 
+	# 	index = 'Provider', 
+	# 	columns='Status').fillna(0)
 
-	d = d.reset_index()
-	d.columns = d.columns.map('_'.join)
+	# d = d.reset_index()
+	# d.columns = d.columns.map('_'.join)
 
-	p = pd.merge(p,d, left_on = ['Provider'], right_on = ['Provider_'], how='left')
+	# p = pd.merge(p,d, left_on = ['Provider'], right_on = ['Provider_'], how='left')
 
 	#################################################################################
 	# Number of Unique Doctors Associated With Provider
-	docs = data.melt(
-		id_vars = 'Provider', 
-		value_vars = ['AttendingPhysician','OperatingPhysician','OtherPhysician'], 
-		var_name='Type', 
-		value_name='Doctor').dropna(axis=0)
+	# docs = data.melt(
+	# 	id_vars = 'Provider', 
+	# 	value_vars = ['AttendingPhysician','OperatingPhysician','OtherPhysician'], 
+	# 	var_name='Type', 
+	# 	value_name='Doctor').dropna(axis=0)
 
-	docs = docs[['Provider','Doctor']].drop_duplicates()
+	# docs = docs[['Provider','Doctor']].drop_duplicates()
 
-	p['Doctors'] = docs.groupby('Provider')['Doctor'].count().values
-
-	p = pd.merge(p, target, on = ['Provider'], how = 'left')
+	# p['Doctors'] = docs.groupby('Provider')['Doctor'].count().values
 	#################################################################################
+	p = pd.merge(p, target, on = ['Provider'], how = 'left')
+
 
 	######
 	# Rename columns. Be careful if you add a feature make sure to put the new name in the right place!
 	#provData.columns = ['Provider','Set', 'Patients','Claims','States','Doctors','Fraud']
 
-	p.drop(columns = ['Provider_Range','Provider_'], inplace=True)
+	p.drop(columns = ['Provider_Range'], inplace=True)
 
 	#################################################################################
 	# Get Network Data and Integrate
-	docNet = pd.read_csv('./data/prodocNet.csv')
-	patNet = pd.read_csv('./data/propatNet.csv')
+	docNet = pd.read_csv('../prodocNet.csv')
+	patNet = pd.read_csv('../propatNet.csv')
 
 	netMerge = pd.merge(docNet, patNet, on = 'Provider', how = 'inner')
+
+
 
 	p = pd.merge(p, netMerge, on = ['Provider'], how = 'left')
 	#################################################################################

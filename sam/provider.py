@@ -19,24 +19,33 @@ def provData(data, target):
 	'''
 	#################################################################################
 
+	claimTrack = pd.read_csv('../claimTrack.csv')
+
+
 	def rangeFunc(feature):
 		return max(feature) - min(feature)
 	p = data.groupby(['Provider']).agg({
 		'Age': 'mean',
-		'Gender' : 'mean', # proportion of claims involving males (Gender=1) (not unique to Beneificiaries)
+		'Gender' : 'sum', # number of men (Gender=1) (not unique to Beneificiaries)
 		'BeneID':'nunique',
 		'ClaimID' : 'count',
-		'State' : 'nunique',
+		#'State' : 'nunique',
 		# 'AttendingPhysician': 'nunique',
-		'OperatingPhysician': 'nunique',
-		'OtherPhysician': 'nunique',
-		'NumProc': 'mean',
+		#'OperatingPhysician': 'nunique',
+		#'OtherPhysician': 'nunique',
+		#'NumProc': 'sum',
 		'NumDiag' : 'mean',
-		'NumChronics': 'mean',
-		'InscClaimAmtReimbursed' : 'mean',
-		'DeductibleAmtPaid' : 'mean',
-		'ClaimDays' : 'mean',
-		'WhetherDead': 'mean', # proportion of dead patients (might need to take negative log to get anything large)
+		#'NumChronics': 'mean',
+		#'InscClaimAmtReimbursed' : 'mean',
+		#'DeductibleAmtPaid' : 'mean',
+		'OPAnnualReimbursementAmt':'mean',
+		'IPAnnualReimbursementAmt':'mean',
+		'TotalClaim': 'mean',
+		'InscCovPercent': 'mean',
+		'DailyCharge': 'mean',
+		'DupRecord': 'sum',
+		#'ClaimDays' : 'mean',
+		'WhetherDead': 'sum', # proportion of dead patients (might need to take negative log to get anything large)
 		'Alzheimer' : 'mean',
 		'HeartFailure': 'mean', 
 		'KidneyDisease' : 'mean',
@@ -50,17 +59,45 @@ def provData(data, target):
 	     'Stroke': 'mean'
 		}).reset_index()
 
+	#p['ProcRate'] = p['NumProc']/p['ClaimID']
+	#p['DiagRate'] = p['NumDiag']/p['ClaimID']
+
+	p['LargeClaims'] = p['ClaimID'] > 1300
+
+	p_inout = data.groupby(['Provider','Status']).agg({
+	    'ClaimDays': 'mean',
+	    'AdmissionDays':'mean',
+	    'NumProc':'mean',
+	    'NumChronics':'mean',
+	    'State': 'nunique'}).reset_index().pivot_table(
+	    values=[
+	    'ClaimDays',
+	    'AdmissionDays',
+	    'NumProc',
+	    'NumChronics',
+	    'State'], 
+	    index = 'Provider', 
+	    columns='Status').fillna(0)
+
+	p_inout = p_inout.reset_index()
+	p_inout.columns = p_inout.columns.map('_'.join)
+
+	p = pd.merge(p,p_inout, left_on = ['Provider'], right_on = ['Provider_'], how='left')
+
 	# p['logClaim'] = np.log(p['ClaimID'])
 	# p['logBene'] = np.log(p['BeneID'])
 	#################################################################################
 	# Create ranges 
 	p_range = data.groupby(['Provider']).agg({
-		'Age' : rangeFunc,
+		#'Age' : rangeFunc,
 		'NumProc': rangeFunc,
-		'NumDiag' : rangeFunc,
-		'NumChronics': rangeFunc,
-		'InscClaimAmtReimbursed' : rangeFunc,
-		'ClaimDays' : rangeFunc
+		#'NumDiag' : rangeFunc,
+		#'NumChronics': rangeFunc,
+		#'InscClaimAmtReimbursed' : rangeFunc,
+		'ClaimDays' : rangeFunc,
+		'TotalClaim' : rangeFunc,
+		'InscCovPercent' : rangeFunc,
+		'DailyCharge' : rangeFunc,
 		}).reset_index()
 
 	p_range.columns += '_Range'
@@ -82,24 +119,24 @@ def provData(data, target):
 
 	#################################################################################
 	# Number of Unique Doctors Associated With Provider
-	docs = data.melt(
-		id_vars = 'Provider', 
-		value_vars = ['AttendingPhysician','OperatingPhysician','OtherPhysician'], 
-		var_name='Type', 
-		value_name='Doctor').dropna(axis=0)
+	# docs = data.melt(
+	# 	id_vars = 'Provider', 
+	# 	value_vars = ['AttendingPhysician','OperatingPhysician','OtherPhysician'], 
+	# 	var_name='Type', 
+	# 	value_name='Doctor').dropna(axis=0)
 
-	docs = docs[['Provider','Doctor']].drop_duplicates()
+	# docs = docs[['Provider','Doctor']].drop_duplicates()
 
-	p['Doctors'] = docs.groupby('Provider')['Doctor'].count().values
-
-	p = pd.merge(p, target, on = ['Provider'], how = 'left')
+	# p['Doctors'] = docs.groupby('Provider')['Doctor'].count().values
 	#################################################################################
+	p = pd.merge(p, target, on = ['Provider'], how = 'left')
+
 
 	######
 	# Rename columns. Be careful if you add a feature make sure to put the new name in the right place!
 	#provData.columns = ['Provider','Set', 'Patients','Claims','States','Doctors','Fraud']
 
-	p.drop(columns = ['Provider_Range'], inplace=True)
+	p.drop(columns = ['Provider_Range','Provider_'], inplace=True)
 
 	#################################################################################
 	# Get Network Data and Integrate
@@ -112,6 +149,18 @@ def provData(data, target):
 
 	p = pd.merge(p, netMerge, on = ['Provider'], how = 'left')
 	#################################################################################
+	## Check if provider is listed as receiver or sender of duplicate claims
+
+	# receiver = claimTrack['Receiver']
+	# sender = claimTrack['Sender']
+
+	# df = claimTrack.melt(id_vars=['BeneID'], value_vars=['Sender','Receiver'],var_name='Type',value_name='Provider').groupby(['Provider','Type'])['BeneID'].count().reset_index()
+	# df['Weight'] = df['Type'].apply(lambda x: 1 if x == 'Receiver' else 2)
+	# df['Weight'] = df['Weight']*df['BeneID']
+	# df = df.groupby('Provider')['Weight'].sum().reset_index()
+
+
+	
 
 
 
