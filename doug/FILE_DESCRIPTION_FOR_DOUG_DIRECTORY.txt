@@ -1,0 +1,19 @@
+File map and description:
+
+- provider_feature_eng_module.py performs data preparation for the exploratory data analysis, focused initially on the in-patient set. (in /doug directory)
+
+- Provider_attribute_exploration.ipynb is a jupyter notebook that has graphics and perforams exploratory data analysis. (in /doug directory)
+
+- post_providerinout_mods.py uses the insights from Provider_attribute_exploration.ipynb and takes the files created by the provider_inout copy.py from the main directory to make the features used in the random forest, gradient boost and support vector models. (in /doug directory)
+
+- inpatnt_provider_attributes.csv & outpatnt_provider_attributes.csv are the data set created by post_providerinout_mods.py in order to read into the notebooks with the models. (in /doug directory)
+
+- Claim_reimbursement_regression_for_Healthcare_Fraud_Detection.ipynb is a jupyter notebook that creates a regression on the amount reimbursed in each claim and then calculates the mean residual from that model for each provider, as another feature for the models. (in /doug directory)
+
+- Random_forest_model_for_healthcare_fraud_detection.ipynb is a jupyter notebook describing the development of a random forest classifier model for healthcare fraud detection. (in /doug directory)
+
+- Gradient_boost_model_for_healthcare_fraud_detection.ipynb is a jupyter notebook describing the development of a gradient boost classifier model for healthcare fraud detection. (in /doug directory)
+
+- Provider_support_vector_classifier.ipynb is a jupyter notebook describing the development of a support vector classifier model for healthcare fraud detection. (in /doug directory)
+
+- Provider_clustering_and_PCA analysis.ipynb is a jupyter notebook describing the development unsupervised clustering hierarchial and k-means models for healthcare fraud detection.  It also includes development of a logistic regression using the principal components of the feature matrix. (in /doug directory)
