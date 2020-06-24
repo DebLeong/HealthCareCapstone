@@ -11,6 +11,7 @@ https://docs.google.com/presentation/d/1H4lfYWPJtbkCfE1UfajOBhzaZaX-bFkZIxNX3Bq8
 
 Link to Blog Post:
 https://docs.google.com/document/d/1ERxUjUaPv6zk8jwhsK5YqweOiE_isOLIXcdAU-ESg2A/edit?ts=5ef22583#heading=h.92d4niykua2
+https://nycdatascience.com/blog/wp-admin/post.php?post=64049&action=edit
 
 Links to file descriptions
 /doug/FILE_DESCRIPTION_FOR_DOUG_DIRECTORY.txt
